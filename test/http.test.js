@@ -97,3 +97,18 @@ test('telemetry config covers every signal with its interval', () => {
   assert.equal(Object.keys(body.config.fields).length, Object.keys(SIGNALS).length);
   for (const [k, f] of Object.entries(body.config.fields)) assert.equal(f.interval_seconds, SIGNALS[k].interval);
 });
+
+test('static files cannot escape the web folder', async () => {
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const sibling = path.join(cfg.root, 'web-private');
+  fs.mkdirSync(sibling, { recursive: true });
+  fs.writeFileSync(path.join(sibling, 'secret.txt'), 'nope');
+  try {
+    const res = await fetch(`${base}/..%2fweb-private/secret.txt`);
+    assert.notEqual(await res.text(), 'nope');
+    assert.equal((await fetch(`${base}/%E0%A4%A`)).status, 400);
+  } finally {
+    fs.rmSync(sibling, { recursive: true, force: true });
+  }
+});

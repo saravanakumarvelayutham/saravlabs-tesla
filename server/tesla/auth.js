@@ -33,7 +33,9 @@ export class TeslaAuth {
 
   async handleCallback({ code, state }) {
     const saved = kvGet(this.db, 'oauth_state');
-    if (!saved || saved.state !== state || Date.now() - saved.ts > 15 * 60_000) throw new Error('OAuth state mismatch or expired');
+    if (!saved || saved.state !== state || Date.now() - saved.ts > 15 * 60_000) {
+      throw Object.assign(new Error('OAuth state mismatch or expired. Start again from Setup.'), { status: 400 });
+    }
     kvSet(this.db, 'oauth_state', null);
     const tokens = await this.tokenRequest({
       grant_type: 'authorization_code',
@@ -60,7 +62,8 @@ export class TeslaAuth {
       client_id: this.t.clientId,
       refresh_token: tok.refresh_token,
     });
-    this.save(next);
+    // Refresh tokens are single use, so keep the old one only if Tesla didn't send a new one.
+    this.save({ ...next, refresh_token: next.refresh_token || tok.refresh_token });
     return next.access_token;
   }
 

@@ -284,10 +284,12 @@ export function telemetryBody(config) {
 }
 
 function serveStatic(root, pathname, res) {
-  let rel = decodeURIComponent(pathname);
+  let rel;
+  try { rel = decodeURIComponent(pathname); } catch { return send(res, 400, { error: 'bad path' }); }
   if (rel === '/') rel = '/index.html';
   const file = path.normalize(path.join(root, rel));
-  if (!file.startsWith(root)) return send(res, 403, { error: 'forbidden' });
+  // Separator included so a sibling folder like web-private/ doesn't pass the check.
+  if (!file.startsWith(root + path.sep)) return send(res, 403, { error: 'forbidden' });
   const target = fs.existsSync(file) && fs.statSync(file).isFile() ? file : path.join(root, 'index.html');
   const ext = path.extname(target);
   const headers = { 'Content-Type': MIME[ext] || 'application/octet-stream' };
