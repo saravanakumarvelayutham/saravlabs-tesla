@@ -1,0 +1,24 @@
+{
+  "name": "saravlabs-tesla",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Model S Plaid dashboard: PWA + server for Fleet Telemetry, Fleet API commands, web push and a Raspberry Pi Bluetooth bridge.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning server/index.js",
+    "dev": "SAMPLE_MODE=1 node --disable-warning=ExperimentalWarning --watch server/index.js",
+    "test": "node --disable-warning=ExperimentalWarning --test \"test/*.test.js\"",
+    "vapid": "node scripts/gen-vapid.js",
+    "telemetry-config": "node --disable-warning=ExperimentalWarning scripts/telemetry-config.js"
+  },
+  "dependencies": {
+    "mqtt": "^5.16.1",
+    "web-push": "^3.6.7"
+  },
+  "devDependencies": {
+    "aedes": "^1.2.0"
+  }
+}
