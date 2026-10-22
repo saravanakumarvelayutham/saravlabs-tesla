@@ -1,0 +1,114 @@
+// Phone · Car tab: live status, car wireframe, energy, signal stream, insights, commands.
+import { sig, isDriving, useData } from '../core.js';
+import { ago, carTop, chips, clock, esc, icon, num, sampleBadge, temp } from '../ui.js';
+
+export function liveLine(state) {
+  const latest = Object.values(state.signals).reduce((m, e) => Math.max(m, e.ts || 0), 0);
+  const fresh = Date.now() - latest < 5 * 60_000;
+  const src = state.meta.sample_mode ? 'Sample' : state.meta.telemetry?.status === 'DISCONNECTED' ? 'Telemetry offline' : 'Telemetry';
+  return `<div class="row" style="justify-content:flex-start;gap:8px"><span class="live${fresh ? '' : ' off'}"></span><span class="k" style="color:${fresh ? 'var(--green)' : 'var(--muted)'}">${fresh ? 'Live link' : 'Last seen'} · ${src} · ${ago(latest)}</span></div>`;
+}
+
+export function energyPanel(state, { compact = false } = {}) {
+  const soc = sig('Soc');
+  const limit = sig('ChargeLimitSoc');
+  const segs = 40;
+  const on = typeof soc === 'number' ? Math.round((soc / 100) * segs) : 0;
+  const limitSeg = typeof limit === 'number' ? Math.round((limit / 100) * segs) : -1;
+  const cs = (sig('DetailedChargeState') || '').replace('DetailedChargeState', '') || '—';
+  const plug = cs === 'Disconnected' ? 'Unplugged' : cs;
+  return `<div class="pn" style="gap:10px">
+    <div class="row end">
+      <div><div class="k">Energy</div><div class="big glow cyan" style="font-size:${compact ? 54 : 64}px">${num(soc)}<span style="font-size:26px">%</span></div></div>
+      <div style="text-align:right"><div class="mono" style="font-size:22px;font-weight:700">${num(sig('RatedRange'))} MI</div><div class="k">Rated range</div></div>
+    </div>
+    <div class="seg-bar" role="img" aria-label="Battery ${num(soc)} percent, limit ${num(limit)} percent">
+      ${Array.from({ length: segs }, (_, i) => `<div class="seg${i < on ? ' on' : ''}${i === limitSeg ? ' limit' : ''}"></div>`).join('')}
+    </div>
+    <div class="row k"><span>Limit ${num(limit)}%</span><span>${esc(plug)}</span></div>
+    ${chips(['Soc', 'RatedRange', 'ChargeLimitSoc', 'DetailedChargeState'], state.signals)}
+  </div>`;
+}
+
+function streamPanel(state) {
+  const rows = state.feed.length
+    ? state.feed.slice(0, 6)
+    : Object.entries(state.signals).map(([field, e]) => ({ field, ...e })).sort((a, b) => b.ts - a.ts).slice(0, 6);
+  const fmt = (v) => (v && typeof v === 'object' ? (v.latitude != null ? `${v.latitude.toFixed(4)}, ${v.longitude.toFixed(4)}` : '{…}') : String(v).replace(/^(ShiftState|SentryModeState|DetailedChargeState|WindowState|HvacPowerState|FastCharger)/, ''));
+  return `<div class="pn" style="gap:4px">
+    <div class="row" style="padding-bottom:4px"><span class="k">Signal stream</span><span class="k" style="color:${state.live ? 'var(--green)' : 'var(--muted)'}">● ${state.live ? 'Receiving' : 'Idle'}</span></div>
+    ${rows.map((r, i) => `<div class="st" style="${i > 4 ? 'opacity:.55' : ''}"><span class="ts">${clock(r.ts)}</span><span class="f">${esc(r.field)}</span><span>${esc(fmt(r.value))}</span></div>`).join('')}
+    <div class="t" style="padding-top:6px">The raw feed your server receives, newest first.</div>
+  </div>`;
+}
+
+function insights(state) {
+  const tires = useData('tires', '/api/health/tires', 5 * 60_000);
+  const drain = useData('drain', '/api/health/drain', 10 * 60_000);
+  const items = [];
+  for (const l of tires?.leaks || []) {
+    items.push(['#/health/tires', 'warn', 'var(--amber)', `${l.tire} tire is down ${l.drop_psi.toFixed(1)} psi over ${l.days} days`, 'Possible slow leak · open Tires']);
+  }
+  if (tires?.hard_warnings?.length) items.push(['#/health/tires', 'warn', 'var(--red)', 'Car reports a tire pressure warning', tires.hard_warnings.join(', ')]);
+  const sentryNights = drain?.nights?.filter((n) => n.valid && n.sentry) || [];
+  if (sentryNights.length && drain.sentry_avg != null) {
+    const ratio = drain.no_sentry_avg ? ` · about ${(drain.sentry_avg / drain.no_sentry_avg).toFixed(1)}× a Sentry-off night` : '';
+    items.push(['#/health', 'clock', 'var(--cyan)', `Sentry nights use ${drain.sentry_avg.toFixed(1)}% overnight`, `Average of ${sentryNights.length} nights${ratio}`]);
+  }
+  const upd = sig('SoftwareUpdateVersion');
+  if (upd) items.push(['#/', 'download', 'var(--cyan)', `Software update ${esc(upd)} is ready`, 'Install from the button below']);
+  // Leaks and updates already have their own line above, so skip their events here.
+  const shown = new Set(['tire_leak', ...(upd ? ['software_update'] : [])]);
+  for (const ev of state.events.filter((e) => !shown.has(e.kind)).slice(0, 2)) items.push(['#/', 'pulse', 'var(--violet)', esc(ev.title), `${esc(ev.body || '')} · ${ago(ev.ts)}`]);
+  if (!items.length) return '';
+  return `<div class="pn" style="gap:12px"><div class="k">Insights</div>
+    ${items.slice(0, 4).map(([href, ic, color, title, sub]) => `<a class="insight" href="${href}">${icon(ic, 28, color)}<div class="stack"><span style="font-size:15px;font-weight:500">${title}</span><span class="t">${sub}</span></div></a>`).join('')}
+    ${chips(['TpmsPressureRl', 'Soc', 'SentryMode', 'SoftwareUpdateVersion'], state.signals)}
+  </div>`;
+}
+
+export function commandButtons(state, { big = false } = {}) {
+  if (isDriving()) return '<div class="t center">Controls are hidden while driving.</div>';
+  const locked = sig('Locked');
+  const climateOn = ['HvacPowerStateOn', 'HvacPowerStatePrecondition'].includes(sig('HvacPower'));
+  const limit = sig('ChargeLimitSoc');
+  const nextLimit = limit === 90 ? 80 : 90;
+  const sentry = typeof sig('SentryMode') === 'string' && !/Off|Unknown/.test(sig('SentryMode'));
+  const upd = sig('SoftwareUpdateVersion');
+  const buttons = [
+    locked === false
+      ? { cmd: 'door_lock', label: 'Lock', ic: 'lock' }
+      : { cmd: 'door_unlock', label: 'Unlock', ic: 'unlock', confirm: 'Unlock the car?' },
+    { cmd: climateOn ? 'auto_conditioning_stop' : 'auto_conditioning_start', label: climateOn ? 'Climate off' : 'Climate', ic: 'fan', on: climateOn },
+    { cmd: 'set_charge_limit', args: { percent: nextLimit }, label: `Limit ${nextLimit}%`, ic: 'bolt' },
+    upd
+      ? { cmd: 'schedule_software_update', args: { offset_sec: 0 }, label: 'Update', ic: 'download', confirm: `Install ${upd} now? The car can't be driven during the install.` }
+      : { cmd: 'set_sentry_mode', args: { on: !sentry }, label: sentry ? 'Sentry off' : 'Sentry', ic: 'eye', on: sentry },
+  ];
+  const attrs = (b) => `type="button" data-cmd="${b.cmd}" data-label="${esc(b.label)}"${b.args ? ` data-args='${JSON.stringify(b.args)}'` : ''}${b.confirm ? ` data-confirm="${esc(b.confirm)}"` : ''}`;
+  if (big) return `<div class="row" style="gap:12px">${buttons.slice(0, 3).map((b) => `<button class="bigbtn" ${attrs(b)}>${esc(b.label)}</button>`).join('')}</div>`;
+  return `<div class="cmds">${buttons.map((b) => `<div class="cmd-wrap"><button class="cmd${b.on ? ' on' : ''}" ${attrs(b)} aria-label="${esc(b.label)}">${icon(b.ic)}</button><span class="k">${esc(b.label)}</span></div>`).join('')}</div>`;
+}
+
+export function homeView(state) {
+  const via = state.meta.bridge?.car_in_range ? 'Bluetooth via the garage Pi' : 'Fleet API';
+  const tires = useData('tires', '/api/health/tires', 5 * 60_000);
+  return `
+    <div class="head">
+      <div class="stack" style="gap:6px">
+        <div class="k">Model S Plaid</div>
+        <div style="font-size:26px;font-weight:700;letter-spacing:-0.01em">${esc(sig('VehicleName') || 'My Plaid')}</div>
+        ${liveLine(state)}
+      </div>
+      <div class="stack" style="align-items:flex-end;gap:8px">${sampleBadge(state.meta)}<a href="#/setup" class="k" aria-label="Setup">${icon('gear', 20, 'var(--muted)')}</a></div>
+    </div>
+    <div class="pn" style="padding:8px 8px 12px">
+      ${carTop(state.signals, { leaks: (tires?.leaks || []).map((l) => l.tire) })}
+      <div style="padding:0 8px">${chips(['TpmsPressureFl', 'TpmsPressureRl', 'InsideTemp', 'OutsideTemp', 'Locked', 'DoorState', 'SentryMode'], state.signals)}</div>
+    </div>
+    ${energyPanel(state)}
+    ${streamPanel(state)}
+    ${insights(state)}
+    ${commandButtons(state)}
+    <div class="t center">Commands go over ${via}, signed with your virtual key${state.meta.sample_mode ? ' · sample mode: nothing is sent to a car' : ''}. Cabin ${temp(sig('InsideTemp'), true)}.</div>`;
+}

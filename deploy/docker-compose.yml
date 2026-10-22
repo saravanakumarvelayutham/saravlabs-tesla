@@ -1,0 +1,65 @@
+# Production stack. Not run end to end in CI or by the author: check each service's logs on first start.
+# Run from this folder:  docker compose --env-file ../.env up -d
+#
+#   car ──mTLS──> fleet-telemetry :8443 ──MQTT──> mosquitto ──> app
+#   app ──HTTPS──> tesla-http-proxy (signs with your virtual key) ──> Fleet API
+#   phone / car browser ──HTTPS──> caddy :443 ──> app :8080   (also serves the public key Tesla checks)
+services:
+  app:
+    build: ..
+    restart: unless-stopped
+    env_file: ../.env
+    environment:
+      DATA_DIR: /data
+      MQTT_URL: mqtt://mosquitto:1883
+      TESLA_PROXY_URL: https://tesla-proxy:4443
+      TESLA_PROXY_CA_FILE: /config/proxy/tls-cert.pem
+      TESLA_PUBLIC_KEY_FILE: /config/proxy/fleet-key-public.pem
+      TELEMETRY_CA_FILE: /config/telemetry/ca.pem
+    volumes:
+      - app-data:/data
+      - ./config:/config:ro
+    depends_on: [mosquitto, tesla-proxy]
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    # No ports published: only reachable inside this compose network.
+
+  fleet-telemetry:
+    image: tesla/fleet-telemetry:${FLEET_TELEMETRY_TAG:-latest}
+    restart: unless-stopped
+    command: ["/fleet-telemetry", "-config=/etc/fleet-telemetry/config.json"]
+    environment:
+      SUPPRESS_TLS_HANDSHAKE_ERROR_LOGGING: "true"
+    volumes:
+      - ./fleet-telemetry/config.json:/etc/fleet-telemetry/config.json:ro
+      - ./config/telemetry:/certs:ro
+    ports:
+      - "8443:443"
+    depends_on: [mosquitto]
+
+  tesla-proxy:
+    image: tesla/vehicle-command:${VEHICLE_COMMAND_TAG:-latest}
+    restart: unless-stopped
+    command: ["-tls-key", "/config/tls-key.pem", "-cert", "/config/tls-cert.pem", "-key-file", "/config/fleet-key.pem", "-host", "0.0.0.0", "-port", "4443"]
+    security_opt: ["no-new-privileges:true"]
+    volumes:
+      - ./config/proxy:/config:ro
+    # No ports published: only the app talks to it.
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    env_file: ../.env
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+    depends_on: [app]
+
+volumes:
+  app-data:
+  caddy-data:

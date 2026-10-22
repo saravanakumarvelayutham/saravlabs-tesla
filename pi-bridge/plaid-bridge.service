@@ -1,0 +1,15 @@
+[Unit]
+Description=Plaid dashboard garage Bluetooth bridge
+After=network-online.target bluetooth.target
+Wants=network-online.target
+
+[Service]
+# Install to /opt/plaid-bridge; put SERVER_URL, BRIDGE_TOKEN, TESLA_VIN, TESLA_KEY_FILE in the env file.
+EnvironmentFile=/etc/plaid-bridge.env
+ExecStart=/usr/bin/node /opt/plaid-bridge/bridge.js
+Restart=always
+RestartSec=10
+User=plaid
+
+[Install]
+WantedBy=multi-user.target
