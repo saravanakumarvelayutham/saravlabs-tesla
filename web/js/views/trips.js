@@ -1,23 +1,21 @@
 // Phone · Trips tab and trip detail.
-import { load } from '../core.js';
-import { chips, day, esc, lineChart, money, num, ring, sampleBadge, temp } from '../ui.js';
+import { load, render } from '../core.js';
+import { chips, day, esc, lineChart, money, num, prefs, ring, sampleBadge, temp } from '../ui.js';
+import { ATTRIBUTION, ATTRIBUTION_URL, TILE, darkFilter, fitView, tileHref, tilesFor } from '../map.js';
 
 const effColor = (wh) => (wh == null ? '#5B6878' : wh < 280 ? 'var(--cyan)' : wh <= 340 ? 'var(--violet)' : 'var(--amber)');
 
-// Route drawn on the grid (no map tiles, so no map provider or API key is needed).
-function routeSvg(trip) {
+// Route trace colored by efficiency, over dark-restyled OpenStreetMap tiles when the Map tiles
+// setting is on (see map.js for the tile source and its terms). Off, it's drawn on the bare grid.
+export function routeSvg(trip, { tiles = prefs.maps, href = (url) => tileHref(url, render), w = 356, h = 250 } = {}) {
   const pts = trip.route || [];
   if (pts.length < 2) return '<div class="empty">No route points for this trip (needs the vehicle_location scope).</div>';
-  const lats = pts.map((p) => p[0]);
-  const lons = pts.map((p) => p[1]);
-  const [minLat, maxLat, minLon, maxLon] = [Math.min(...lats), Math.max(...lats), Math.min(...lons), Math.max(...lons)];
-  const w = 356;
-  const h = 250;
-  const pad = 26;
-  const kx = Math.cos(((minLat + maxLat) / 2) * Math.PI / 180);
-  const span = Math.max((maxLon - minLon) * kx, maxLat - minLat) || 1e-4;
-  const X = (lon) => pad + ((lon - minLon) * kx / span) * (w - pad * 2);
-  const Y = (lat) => h - pad - ((lat - minLat) / span) * (h - pad * 2);
+  const view = fitView(pts, { w, h, pad: 26 });
+  const { X, Y } = view;
+  const uid = `r${String(trip.id ?? 0).replace(/\W/g, '')}`;
+  const map = tiles
+    ? `<g filter="url(#${uid}f)">${tilesFor(view, w, h).map((t) => ({ ...t, src: href(t.url) })).filter((t) => t.src).map((t) => `<image href="${t.src}" x="${t.x.toFixed(1)}" y="${t.y.toFixed(1)}" width="${TILE}" height="${TILE}"></image>`).join('')}</g>`
+    : '';
   const segOf = (ts) => trip.segments?.find((s) => ts >= s.from && ts <= s.to)?.wh_per_mile ?? null;
   let lines = '';
   for (let i = 1; i < pts.length; i++) {
@@ -27,15 +25,22 @@ function routeSvg(trip) {
   }
   const s = pts[0];
   const e = pts[pts.length - 1];
-  return `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="Route trace colored by energy use">
+  const ly = h - 18;
+  return `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="Route trace colored by energy use${tiles ? ', over an OpenStreetMap map' : ''}">
+    <defs>
+      <clipPath id="${uid}c"><rect width="${w}" height="${h}"></rect></clipPath>
+      <pattern id="${uid}g" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24" fill="none" stroke="var(--grid)" stroke-width="1"></path></pattern>
+      ${tiles ? `${darkFilter(`${uid}f`)}<linearGradient id="${uid}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#060B12" stop-opacity="0"></stop><stop offset="1" stop-color="#060B12" stop-opacity="0.9"></stop></linearGradient>` : ''}
+    </defs>
     <rect width="${w}" height="${h}" fill="#060B12"></rect>
-    ${lines}
-    <circle cx="${X(s[1])}" cy="${Y(s[0])}" r="6" fill="var(--bg)" stroke="var(--text)" stroke-width="2"></circle>
-    <circle cx="${X(e[1])}" cy="${Y(e[0])}" r="7" fill="var(--cyan)"></circle>
-    <rect class="m" x="12" y="232" width="10" height="4" fill="var(--cyan)"></rect><text class="m" x="26" y="237" fill="var(--text-2)" font-size="9">&lt;280</text>
-    <rect x="70" y="232" width="10" height="4" fill="var(--violet)"></rect><text class="m" x="84" y="237" fill="var(--text-2)" font-size="9">280–340</text>
-    <rect x="146" y="232" width="10" height="4" fill="var(--amber)"></rect><text class="m" x="160" y="237" fill="var(--text-2)" font-size="9">&gt;340 Wh/mi</text>
+    <g clip-path="url(#${uid}c)">${map}<rect width="${w}" height="${h}" fill="url(#${uid}g)"></rect>${tiles ? `<rect y="${h - 48}" width="${w}" height="48" fill="url(#${uid}s)"></rect>` : ''}${lines}</g>
+    <circle cx="${X(s[1]).toFixed(1)}" cy="${Y(s[0]).toFixed(1)}" r="6" fill="var(--bg)" stroke="var(--text)" stroke-width="2"></circle>
+    <circle cx="${X(e[1]).toFixed(1)}" cy="${Y(e[0]).toFixed(1)}" r="7" fill="var(--cyan)"></circle>
+    <rect x="12" y="${ly - 5}" width="10" height="4" fill="var(--cyan)"></rect><text class="m" x="26" y="${ly}" fill="var(--text-2)" font-size="9">&lt;280</text>
+    <rect x="70" y="${ly - 5}" width="10" height="4" fill="var(--violet)"></rect><text class="m" x="84" y="${ly}" fill="var(--text-2)" font-size="9">280–340</text>
+    <rect x="146" y="${ly - 5}" width="10" height="4" fill="var(--amber)"></rect><text class="m" x="160" y="${ly}" fill="var(--text-2)" font-size="9">&gt;340 Wh/mi</text>
     <text class="m" x="12" y="20" fill="var(--muted)" font-size="9" letter-spacing="1.2">ROUTE FROM LOCATION · ${pts.length} POINTS</text>
+    ${tiles ? `<a href="${ATTRIBUTION_URL}" target="_blank" rel="noopener"><text x="${w - 6}" y="${h - 5}" fill="var(--text-2)" font-size="8" text-anchor="end">${ATTRIBUTION}</text></a>` : ''}
   </svg>`;
 }
 

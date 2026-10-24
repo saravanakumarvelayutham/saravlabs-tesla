@@ -37,6 +37,8 @@ export async function setupView(state_) {
     <div class="pn">
       <div class="k">Display</div>
       <label class="check"><input type="checkbox" data-action="toggle-sources" ${prefs.sources ? 'checked' : ''}> Show data-source chips</label>
+      <label class="check"><input type="checkbox" data-action="toggle-maps" ${prefs.maps ? 'checked' : ''}> Map tiles behind trip routes</label>
+      <div class="t">Tiles come from OpenStreetMap, so their servers see the area of each route you open. Off draws routes on the bare grid.</div>
       <label>Temperature<select data-action="temp-unit"><option value="F" ${prefs.temp === 'F' ? 'selected' : ''}>°F</option><option value="C" ${prefs.temp === 'C' ? 'selected' : ''}>°C</option></select></label>
     </div>
     ${m.tesla_linked ? `<div class="pn">
@@ -85,6 +87,7 @@ Object.assign(actions, {
     try { const r = await api('/api/push/test', { method: 'POST' }); toast(r.skipped || `Sent to ${r.sent} device(s)`); } catch (err) { toast(err.message, true); }
   },
   'toggle-sources': (el) => { prefs.sources = el.checked; render(); },
+  'toggle-maps': (el) => { prefs.maps = el.checked; render(); },
   'temp-unit': (el) => { prefs.temp = el.value; render(); },
   'telemetry-apply': async () => {
     try { await api('/api/tesla/telemetry-config', { method: 'POST' }); toast('Config sent. Check below for synced: true.'); delete state.cache.tcfg; render(); } catch (err) { toast(err.message, true); }

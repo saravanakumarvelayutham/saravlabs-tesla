@@ -42,6 +42,8 @@ Thresholds that are this app's choice (not Tesla's) are labeled as such in the U
 
 No build step: `web/` is static ES modules. `core.js` holds state and the API client, `app.js` routes and opens the SSE stream, each screen is a view function returning HTML. Width ≥ 1000 px (or `?view=car`) shows the car-browser layout, which switches to a glance view with no controls while the car isn't in Park. The service worker caches the shell and shows push notifications.
 
+Trip routes are drawn over OpenStreetMap raster tiles (`web/js/map.js`), recolored to the dashboard palette by an SVG filter. No key or account is needed; the [OSMF tile usage policy](https://operations.osmfoundation.org/policies/tiles/) asks for visible attribution (drawn on the map), the browser's normal Referer and User-Agent, no prefetching and no offline storage. Each tile is fetched once per page session and reused from memory, because views re-render on every live signal. Setup → Display → *Map tiles behind trip routes* turns them off, and then no request goes to openstreetmap.org.
+
 ## Security
 
 - `APP_PASSCODE` login with an HMAC-signed cookie and a login rate limit. Without a passcode the server only listens on localhost.
