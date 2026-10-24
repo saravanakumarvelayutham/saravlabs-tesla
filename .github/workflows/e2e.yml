@@ -1,0 +1,29 @@
+name: e2e
+# Full stack without the car: real tesla/fleet-telemetry, tesla/vehicle-command proxy and
+# Mosquitto images, the app image, a fake car, fake Tesla endpoints, a fake push service and
+# Chromium. See test/e2e/README.md.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - name: Playwright with Chromium
+        run: |
+          npm install --no-save playwright@1.63.0
+          npx playwright install --with-deps chromium
+      - run: test/e2e/run.sh
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results
+          path: test/e2e/results/

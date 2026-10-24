@@ -31,8 +31,10 @@ export class Trips {
     }
     if (this.finalizing && ts - this.finalizing.end_ts <= FINALIZE_MS) {
       if (field === 'Odometer') this.patchEnd('end_odo', value);
-      if (field === 'EnergyRemaining') this.patchEnd('end_energy', value);
-      if (field === 'Soc') this.patchEnd('end_soc', value);
+      // A late reading can only be lower than the one at Park. A higher one means charging
+      // started inside the window (plugging in right after parking), so it isn't trip energy.
+      if (field === 'EnergyRemaining' && !(value > this.finalizing.end_energy)) this.patchEnd('end_energy', value);
+      if (field === 'Soc' && !(value > this.finalizing.end_soc)) this.patchEnd('end_soc', value);
       if (value === true && !this.finalizing.end_place) {
         const place = { LocatedAtHome: 'Home', LocatedAtWork: 'Work', LocatedAtFavorite: 'Favorite' }[field];
         if (place) this.patchEnd('end_place', place);
