@@ -32,6 +32,10 @@ export const SIGNALS = {
   BrickVoltageMin: { interval: 600, unit: 'V', unitNote: 'Tesla gives no unit.' },
   ModuleTempMax: { interval: 300, unit: '°C', unitNote: 'Tesla says "maximum thermistor temperature" without a unit.' },
   ModuleTempMin: { interval: 300, unit: '°C', unitNote: 'Tesla gives no unit.' },
+  // Battery power while driving, for the regen estimate when LifetimeEnergyGainedRegen is absent.
+  // Tesla documents both fields but not their units or which way the current is signed.
+  PackVoltage: { interval: 5, minimumDelta: 1, unit: 'V', unitNote: 'Tesla says "voltage measured on the battery side of the HV contactors" without a unit.' },
+  PackCurrent: { interval: 1, minimumDelta: 2, unit: 'A', unitNote: 'Tesla says "current measured at the HV contactors" without a unit or sign convention.' },
   NominalFullPackEnergyKwh: { interval: 3600, unit: 'kWh', minFirmware: '2026.32', unverified: true, doc: 'Proto field 263; fields 260-269 need firmware 2026.32. Not on the Available Data page.' },
 
   // Driving
@@ -41,6 +45,8 @@ export const SIGNALS = {
   LongitudinalAcceleration: { interval: 1, unit: 'm/s²', doc: 'Longitudinal acceleration, m/s^2.' },
   LateralAcceleration: { interval: 1, unit: 'm/s²', doc: 'Lateral acceleration, m/s^2.' },
   BrakePedalPos: { interval: 1, numeric: true, unitNote: 'Tesla: "master cylinder pressure measured in the ESP", no unit. Shown as a relative value.' },
+  // Proto field 264 (firmware 2026.32+), not on Tesla's Available Data page.
+  GradeEstimatePercent: { interval: 5, unit: '%', minFirmware: '2026.32', unverified: true },
   PedalPosition: { interval: 1, unit: '%', unitNote: 'Tesla says "position of the accelerator pedal" without a unit.' },
 
   // Powertrain (Plaid: front, rear-left, rear-right drive units)
@@ -104,8 +110,9 @@ export const SIGNALS = {
   SoftwareUpdateVersion: { interval: 60, doc: 'Version of an available update.' },
   SoftwareUpdateAvailable: { interval: 60, minFirmware: '2026.32', unverified: true, doc: 'Proto field 266. Not on the Available Data page.' },
   // In vehicle_data.proto (field 134, not marked Semi-only) but not listed on Tesla's
-  // Available Data page. Streamed so we can see whether a Plaid populates it.
-  LifetimeEnergyGainedRegen: { interval: 600, unit: 'kWh', unverified: true },
+  // Available Data page. Streamed so we can see whether a Plaid populates it. 60 s like
+  // Odometer, so the reading after Park lands inside a trip's finalize window.
+  LifetimeEnergyGainedRegen: { interval: 60, unit: 'kWh', unverified: true },
 };
 
 export const barToPsi = (bar) => (bar == null ? null : bar * BAR_TO_PSI);

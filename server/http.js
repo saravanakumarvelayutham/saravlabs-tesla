@@ -7,6 +7,7 @@ import { SIGNALS, buildTelemetryConfig } from './signals.js';
 import { ingestBle } from './ingest/ble.js';
 import { costBetween, matchSession, parseChargingHistory } from './derive/supercharger.js';
 import { signalHistory } from './history.js';
+import { regenFromCounter, regenTotal } from './derive/regen.js';
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -304,22 +305,29 @@ function weekSummary(app, trips) {
     return { miles, kwh, wh_per_mile: miles > 0 ? (kwh * 1000) / miles : null, trips: ok.length };
   };
   const all = app.trips.list(500);
-  const thisWeek = sum(all.filter((t) => t.start_ts >= since));
+  const thisWeekTrips = all.filter((t) => t.start_ts >= since);
+  const thisWeek = sum(thisWeekTrips);
   return {
-    this_week: { ...thisWeek, ...regenShare(app.store, since, Date.now(), thisWeek.kwh) },
+    this_week: { ...thisWeek, ...weekRegen(app, since, thisWeekTrips, thisWeek.kwh) },
     last_week: sum(all.filter((t) => t.start_ts >= prev && t.start_ts < since)),
     weekly: weeklySeries(all),
   };
+}
+
+// The regen counter over the whole week when the car sends it; otherwise the per-trip
+// pack-power estimate summed over this week's trips (see derive/regen.js).
+function weekRegen(app, since, trips, netKwh) {
+  const r = regenShare(app.store, since, Date.now(), netKwh);
+  if (r.regen_kwh != null) return { ...r, regen_source: 'counter' };
+  return regenTotal(trips.map((t) => ({ ...t, ...app.trips.regen(t) })));
 }
 
 // Share of driving energy won back by regen over [from, to]: regen / (net energy used + regen).
 // Net use is the drop in EnergyRemaining, which already has regen added back in.
 // Needs LifetimeEnergyGainedRegen, which is in Tesla's proto but not on their docs page.
 export function regenShare(store, from, to, netKwh) {
-  const a = store.valueAt('LifetimeEnergyGainedRegen', from);
-  const b = store.valueAt('LifetimeEnergyGainedRegen', to);
-  if (typeof a !== 'number' || typeof b !== 'number' || b < a) return { regen_kwh: null, regen_share: null };
-  const regen = b - a;
+  const regen = regenFromCounter(store, from, to);
+  if (regen == null) return { regen_kwh: null, regen_share: null };
   return { regen_kwh: regen, regen_share: netKwh > 0 ? regen / (netKwh + regen) : null };
 }
 

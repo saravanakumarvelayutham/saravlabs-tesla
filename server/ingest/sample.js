@@ -19,8 +19,11 @@ function rng(seed) {
 }
 
 export class Sample {
-  constructor(store) {
+  // regenCounter: false leaves out LifetimeEnergyGainedRegen, as a car that doesn't send it would,
+  // so the pack-power regen estimate can be seen working.
+  constructor(store, { regenCounter = true } = {}) {
     this.store = store;
+    this.regenCounter = regenCounter;
     this.rand = rng(42);
     this.soc = 72;
     this.odo = 18234.2;
@@ -29,7 +32,19 @@ export class Sample {
   }
 
   put(field, value, ts) {
+    if (field === 'LifetimeEnergyGainedRegen' && !this.regenCounter) return;
     this.store.put(field, value, ts, SRC);
+  }
+
+  // Pack voltage and current for `ms` of driving that drew `outKwh` and won back `backKwh`:
+  // discharge first, then a regen pulse. Positive current is discharge here; Tesla doesn't say.
+  putPack(ts, ms, outKwh, backKwh) {
+    const v = round(360 + (this.soc / 100) * 50, 1);
+    const amps = (kwh, dur) => round((kwh * 3_600_000_000) / (v * dur), 1);
+    const back = backKwh > 0 ? Math.round(ms * 0.3) : 0;
+    this.put('PackVoltage', v, ts);
+    this.put('PackCurrent', amps(outKwh, ms - back), ts);
+    if (back) this.put('PackCurrent', -amps(backKwh, back), ts + ms - back);
   }
 
   energy() {
@@ -100,6 +115,7 @@ export class Sample {
     while (done < miles) {
       ts += 10_000;
       step++;
+      let back = 0;
       if (launch && step === 6) {
         // A launch: dense 0.5 s samples so the 0-60 estimate has something to work with.
         this.put('VehicleSpeed', 0, ts);
@@ -124,15 +140,18 @@ export class Sample {
         this.put('LateralAcceleration', round((this.rand() - 0.5) * 5.4, 2), ts);
         // Hard slowing uses the friction brakes; gentle slowing is mostly regen.
         this.put('BrakePedalPos', accel < -1.2 ? round(-accel * 9 + this.rand() * 4, 1) : 0, ts);
-        if (accel < 0) this.regen += (-accel * speed) / 3600 * 0.9;
+        if (accel < 0) back = (-accel * speed) / 3600 * 0.9;
+        this.regen += back;
       }
       const d = (speed * 10) / 3600;
       done += d;
       this.odo += d;
       this.soc -= (d * whPerMile) / 1000 / this.capacity * 100;
+      this.putPack(ts, 10_000, (d * whPerMile) / 1000 + back, back);
       const f = Math.min(1, done / miles);
       const wobble = Math.sin(f * Math.PI * 3) * 0.004;
       this.put('Location', { latitude: from.lat + (dest.lat - from.lat) * f + wobble, longitude: from.lon + (dest.lon - from.lon) * f - wobble }, ts);
+      if (step % 3 === 0) this.put('GradeEstimatePercent', round(Math.sin(f * Math.PI * 2 + miles) * 4 + (this.rand() - 0.5), 1), ts);
       if (step % 6 === 0) {
         this.put('LifetimeEnergyGainedRegen', round(this.regen, 2), ts);
         this.put('Odometer', round(this.odo, 1), ts);
@@ -148,6 +167,7 @@ export class Sample {
     ts += 10_000;
     this.put('VehicleSpeed', 0, ts);
     this.put('Gear', 'ShiftStateP', ts);
+    this.put('PackCurrent', 0, ts);
     this.put('LifetimeEnergyGainedRegen', round(this.regen, 2), ts);
     this.setPlace(ts, to);
     this.put('Odometer', round(this.odo, 1), ts + 20_000);
@@ -249,6 +269,7 @@ export class Sample {
         this.launchAt = 12;
       } else if (phase === 1) {
         if (el < 180) {
+          let back = 0;
           if (this.launchAt && el >= this.launchAt && el < this.launchAt + 3) {
             const p = (el - this.launchAt) / 2.5;
             this.speed = Math.min(70, p * 60);
@@ -264,12 +285,16 @@ export class Sample {
             const accel = round((this.rand() - 0.5) * 2.4, 2);
             this.put('LongitudinalAcceleration', accel, now);
             this.put('BrakePedalPos', accel < -0.9 ? round(-accel * 9, 1) : 0, now);
+            if (accel < 0) back = (-accel * this.speed) / 3600 * 0.09; // 1 s ticks, vs 10 s steps in backfill
           }
+          if (Math.round(el) % 5 === 0) this.put('GradeEstimatePercent', round(Math.sin(el / 20) * 3.5, 1), now);
           this.put('LateralAcceleration', round((this.rand() - 0.5) * 4, 2), now);
           this.put('VehicleSpeed', round(this.speed, 1), now);
           const d = this.speed / 3600;
           this.odo += d;
           this.soc -= (d * 300) / 1000 / this.capacity * 100;
+          this.regen += back;
+          this.putPack(now, 1000, (d * 300) / 1000 + back, back);
           const f = el / 180;
           this.put('Location', { latitude: HOME.lat + (WORK.lat - HOME.lat) * f, longitude: HOME.lon + (WORK.lon - HOME.lon) * f }, now);
           this.put('MinutesToArrival', round((180 - el) / 60 * 8, 1), now);
@@ -279,11 +304,14 @@ export class Sample {
           if (Math.round(el) % 10 === 0) {
             this.put('Odometer', round(this.odo, 1), now);
             this.putBattery(now);
+            this.put('LifetimeEnergyGainedRegen', round(this.regen, 2), now);
           }
         } else {
           phase = 2; t0 = now;
           this.put('VehicleSpeed', 0, now);
           this.put('Gear', 'ShiftStateP', now);
+          this.put('PackCurrent', 0, now);
+          this.put('LifetimeEnergyGainedRegen', round(this.regen, 2), now);
           this.put('DestinationName', null, now);
           this.put('MinutesToArrival', null, now);
           this.put('Odometer', round(this.odo, 1), now);

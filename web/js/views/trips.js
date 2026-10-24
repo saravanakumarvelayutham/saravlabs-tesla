@@ -39,8 +39,26 @@ function routeSvg(trip) {
   </svg>`;
 }
 
+// Where a regen figure came from (server/derive/regen.js), for labels and source chips.
+export const regenFields = (r) => (r?.regen_source === 'pack_power' ? ['PackVoltage', 'PackCurrent', 'EnergyRemaining']
+  : r?.regen_source === 'mixed' ? ['LifetimeEnergyGainedRegen', 'PackVoltage', 'PackCurrent'] : ['LifetimeEnergyGainedRegen']);
+export const regenNote = (r) => (r?.regen_source === 'pack_power'
+  ? 'Estimated from pack voltage × current, since the car isn\'t sending its regen counter.'
+  : r?.regen_source === 'mixed' ? 'Partly from LifetimeEnergyGainedRegen, partly estimated from pack voltage × current.' : '');
+
 const tripName = (t) => `${esc(t.start_place || 'Away')} → ${esc(t.end_place || 'Away')}`;
 const tripCost = (t, meta) => (meta.home_rate && t.kwh != null ? money(t.kwh * meta.home_rate, meta.currency) : null);
+
+// Regen and the steepest climb, for the trip detail page.
+function tripExtras(trip) {
+  const regen = trip.regen_share != null
+    ? `<span class="green">Regen ${num(trip.regen_share * 100)}%</span>: ${num(trip.regen_kwh, 2)} kWh back${trip.regen_source === 'pack_power' ? ' (estimated from pack power)' : ''}`
+    : 'Regen: no data for this trip';
+  const graded = (trip.segments || []).filter((s) => s.grade_pct != null);
+  const climb = graded.length ? graded.reduce((a, b) => (b.grade_pct > a.grade_pct ? b : a)) : null;
+  const grade = climb ? ` · steepest stretch ${num(climb.grade_pct, 1)}% grade at ${num(climb.wh_per_mile)} Wh/mi` : '';
+  return regen + grade;
+}
 
 function tripCard(trip, state, full) {
   return `<div class="pn" style="padding:0;overflow:hidden">
@@ -51,8 +69,9 @@ function tripCard(trip, state, full) {
       <div><div class="k">Wh/mi</div><div style="font-size:17px;font-weight:700;color:${effColor(trip.wh_per_mile)}">${num(trip.wh_per_mile)}</div></div>
       <div><div class="k">${tripCost(trip, state.meta) ? 'Cost' : 'Energy'}</div><div style="font-size:17px;font-weight:700">${tripCost(trip, state.meta) || `${num(trip.kwh, 1)} kWh`}</div></div>
     </div>
-    ${full ? `<div class="t" style="padding:0 16px 8px">Max ${num(trip.max_speed)} mph · outside ${temp(trip.outside_temp, true)} · battery ${num(trip.start_soc)}→${num(trip.end_soc)}%</div>` : ''}
-    <div style="padding:0 16px 14px">${chips(['Location', 'Gear', 'Odometer', 'EnergyRemaining', 'VehicleSpeed'], state.signals)}</div>
+    ${full ? `<div class="t" style="padding:0 16px 8px">Max ${num(trip.max_speed)} mph · outside ${temp(trip.outside_temp, true)} · battery ${num(trip.start_soc)}→${num(trip.end_soc)}%</div>
+    <div class="t" style="padding:0 16px 8px">${tripExtras(trip)}</div>` : ''}
+    <div style="padding:0 16px 14px">${chips([...new Set(['Location', 'Gear', 'Odometer', 'EnergyRemaining', 'VehicleSpeed', ...(full ? [...regenFields(trip), 'GradeEstimatePercent'] : [])])], state.signals)}</div>
   </div>`;
 }
 
@@ -75,11 +94,12 @@ export async function tripsView(state) {
       <div class="pn" style="align-items:center;justify-content:center">
         ${share != null ? `<svg width="110" height="110" viewBox="0 0 110 110" role="img" aria-label="Regen recovered ${num(share * 100)} percent of energy used this week">${ring({ cx: 55, cy: 55, r: 44, frac: share, color: 'var(--green)' })}<text x="55" y="62" fill="var(--text)" font-size="22" font-weight="700" text-anchor="middle">${num(share * 100)}%</text></svg>
           <div class="k center">Regen recovered this week</div>
-          <div class="t center">${num(tw.regen_kwh, 1)} kWh back of ${num(tw.kwh + tw.regen_kwh, 1)} kWh used · ${num(regenSig?.value, 0)} kWh lifetime</div>`
+          <div class="t center">${num(tw.regen_kwh, 1)} kWh back of ${num(tw.kwh + tw.regen_kwh, 1)} kWh used${regenSig ? ` · ${num(regenSig.value, 0)} kWh lifetime` : ''}</div>
+          ${regenNote(tw) ? `<div class="t center">${esc(regenNote(tw))}</div>` : ''}`
           : regenSig ? `<div class="k center">Regen recovered</div><div class="big center" style="font-size:28px">${num(regenSig.value, 0)} kWh</div>
           <div class="t center">Lifetime total. A weekly share needs a reading from before this week and trips with energy data.</div>`
-          : `<div class="k center">Regen recovered</div><div class="t center">No LifetimeEnergyGainedRegen data. It's in Tesla's proto but not on their docs page, so this shows once your Plaid sends it.</div>`}
-        ${chips(['LifetimeEnergyGainedRegen'], state.signals)}
+          : `<div class="k center">Regen recovered</div><div class="t center">No regen data this week. It needs LifetimeEnergyGainedRegen (in Tesla's proto, not on their docs page) or PackVoltage and PackCurrent over a trip.</div>`}
+        ${chips(regenFields(tw), state.signals)}
       </div>
       <div class="pn" style="justify-content:center">
         <div class="k">This week</div>

@@ -3,6 +3,21 @@
 import { sig, useData } from '../core.js';
 import { arc, carTop, chips, esc, money, num, sampleBadge } from '../ui.js';
 import { commandButtons, liveLine } from './home.js';
+import { regenFields } from './trips.js';
+
+// Month charging money for the parked view: home + Supercharger with cost per mile when the
+// server can price both, else home cost alone, else kWh.
+export function monthMoney(m, currency) {
+  const month = new Date().toLocaleString([], { month: 'long' });
+  if (!m) return { label: `${month} charging`, value: '—', perMile: '—', note: '' };
+  if (m.total_cost != null) {
+    return { label: `${month} charging`, value: money(m.total_cost, currency), perMile: m.cost_per_mile != null ? money(m.cost_per_mile, currency, 3) : '—',
+      note: m.cost_per_mile != null ? '' : 'Per mile needs miles driven this month.' };
+  }
+  const why = `Cost per mile needs ${m.missing?.length ? m.missing.join(' and ') : 'home and Supercharger cost'}.`;
+  if (m.home?.cost != null) return { label: `Home charging, ${month}`, value: money(m.home.cost, currency), perMile: '—', note: why };
+  return { label: `${month} charging`, value: `${num((m.home?.kwh || 0) + (m.dc?.kwh || 0))} kWh`, perMile: '—', note: why };
+}
 
 export async function carParkedView(state) {
   const trips = useData('trips', '/api/trips?limit=60', 120_000);
@@ -12,7 +27,7 @@ export async function carParkedView(state) {
   const soc = sig('Soc');
   const cs = (sig('DetailedChargeState') || '').replace('DetailedChargeState', '');
   const tw = trips?.week?.this_week;
-  const m = charging?.month;
+  const mm = monthMoney(charging?.month, state.meta.currency);
   return `
     <div class="car-top">
       <div class="row" style="gap:18px;justify-content:flex-start"><span style="font-size:26px;font-weight:700">${esc(sig('VehicleName') || 'My Plaid')}</span><span class="k">Park · full screen</span>${liveLine(state)}</div>
@@ -39,10 +54,12 @@ export async function carParkedView(state) {
         <div class="row" style="justify-content:flex-start;gap:10px;align-items:baseline"><span class="big glow cyan" style="font-size:56px">${num(tw?.wh_per_mile)}</span><span class="k">Wh/mi</span></div>
         <div class="kv"><span>Driven</span><span class="mono">${num(tw?.miles)} MI</span></div>
         <div class="kv"><span>Trips</span><span class="mono">${num(tw?.trips)}</span></div>
-        <div class="kv"><span>Home charging, month</span><span class="mono">${m?.home.cost != null ? money(m.home.cost, state.meta.currency) : `${num(m?.home.kwh)} kWh`}</span></div>
-        <div class="kv"><span>Supercharging, month</span><span class="mono">${num(m?.dc.kwh)} kWh</span></div>
+        <div class="kv"><span>Regen back</span><span class="mono green" title="${tw?.regen_source === 'pack_power' ? 'Estimated from pack voltage × current' : 'From LifetimeEnergyGainedRegen'}">${tw?.regen_share != null ? `${num(tw.regen_share * 100)}%${tw.regen_source === 'pack_power' ? ' EST' : ''}` : '—'}</span></div>
+        <div class="kv"><span>${esc(mm.label)}</span><span class="mono">${mm.value}</span></div>
+        <div class="kv"><span>Per mile</span><span class="mono">${mm.perMile}</span></div>
         <div class="kv"><span>Sentry drain</span><span class="mono amber">${drain?.sentry_avg != null ? `${drain.sentry_avg.toFixed(1)}%/NIGHT` : '—'}</span></div>
-        <div style="margin-top:auto">${chips(['EnergyRemaining', 'Odometer', 'ACChargingEnergyIn', 'api:charging_history'], state.signals)}</div>
+        ${mm.note ? `<div class="t">${esc(mm.note)}</div>` : ''}
+        <div style="margin-top:auto">${chips([...new Set(['EnergyRemaining', 'Odometer', ...regenFields(tw), 'ACChargingEnergyIn', 'api:charging_history'])], state.signals)}</div>
       </div>
     </div>`;
 }
