@@ -4,7 +4,7 @@ import { SIGNALS } from './signals.js';
 
 // Fields stored as numbers. The fleet-telemetry MQTT README warns that the car may send
 // a float as 12.3 or "12.3" depending on firmware, so numeric strings are coerced.
-const NUMERIC = new Set(Object.entries(SIGNALS)
+export const NUMERIC = new Set(Object.entries(SIGNALS)
   .filter(([k, s]) => s.unit || s.numeric || k.startsWith('DiTorqueActual'))
   .map(([k]) => k));
 
@@ -68,6 +68,13 @@ export class Store extends EventEmitter {
   valueAt(field, ts) {
     const r = this.db.prepare('SELECT value FROM history WHERE field = ? AND ts <= ? ORDER BY ts DESC LIMIT 1').get(field, ts);
     return r ? JSON.parse(r.value) : null;
+  }
+
+  // The newest `limit` rows since sinceTs, oldest first.
+  recent(field, sinceTs = 0, limit = 5000) {
+    return this.db.prepare('SELECT value, ts, source FROM history WHERE field = ? AND ts >= ? ORDER BY ts DESC LIMIT ?')
+      .all(field, sinceTs, limit).reverse()
+      .map((r) => ({ value: JSON.parse(r.value), ts: r.ts, source: r.source }));
   }
 
   prune(olderThanTs) {
