@@ -6,6 +6,7 @@ import path from 'node:path';
 import { SIGNALS, buildTelemetryConfig } from './signals.js';
 import { ingestBle } from './ingest/ble.js';
 import { costBetween, matchSession, parseChargingHistory } from './derive/supercharger.js';
+import { signalHistory } from './history.js';
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -94,7 +95,12 @@ export function createServer(app) {
   });
   route('GET', '/api/history', (req, res, { query }) => {
     if (!SIGNALS[query.field]) return send(res, 400, { error: 'unknown field' });
-    return app.store.history(query.field, Number(query.since || 0), Math.min(Number(query.limit || 5000), 50000));
+    return app.store.recent(query.field, Number(query.since || 0), Math.min(Number(query.limit || 5000), 50000));
+  });
+  // Tap-to-inspect sheet. Fields outside SIGNALS are allowed once the server has stored them.
+  route('GET', /^\/api\/signals\/([A-Za-z0-9_]+)\/history$/, (req, res, { params, query }) => {
+    if (!SIGNALS[params[0]] && !app.store.entry(params[0])) return send(res, 404, { error: 'unknown field' });
+    return { ...signalHistory(app.store, params[0], { range: query.range || '24h' }), meta: SIGNALS[params[0]] || null };
   });
   route('GET', '/api/trips', (req, res, { query }) => {
     const trips = app.trips.list(Number(query.limit || 50));

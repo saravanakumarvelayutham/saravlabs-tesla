@@ -1,8 +1,8 @@
 // Service worker: offline shell, web push, notification taps.
-const CACHE = 'plaid-v1';
+const CACHE = 'plaid-v2';
 const SHELL = ['/', '/index.html', '/css/app.css', '/js/app.js', '/js/core.js', '/js/ui.js',
   '/js/views/home.js', '/js/views/charge.js', '/js/views/trips.js', '/js/views/health.js', '/js/views/drive.js',
-  '/js/views/car.js', '/js/views/setup.js', '/manifest.webmanifest', '/icons/icon.svg'];
+  '/js/views/car.js', '/js/views/setup.js', '/js/views/signal.js', '/manifest.webmanifest', '/icons/icon.svg'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

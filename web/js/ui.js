@@ -43,10 +43,18 @@ export const clock = (ts) => new Date(ts).toLocaleTimeString([], { hour: '2-digi
 export const day = (ts) => new Date(ts).toLocaleDateString([], { month: 'short', day: 'numeric' }).toUpperCase();
 export const dateTime = (ts) => new Date(ts).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 
+// Short form of a raw signal value: enum prefixes dropped, locations as lat, lon.
+export function fmtValue(v) {
+  if (v === null || v === undefined) return '—';
+  if (typeof v === 'number') return String(Math.round(v * 100) / 100);
+  if (typeof v === 'object') return v.latitude != null ? `${v.latitude.toFixed(4)}, ${v.longitude.toFixed(4)}` : Object.entries(v).filter(([, on]) => on === true).map(([k]) => k).join(', ') || 'none';
+  return String(v).replace(/^(ShiftState|SentryModeState|DetailedChargeState|WindowState|HvacPowerState|CabinOverheatProtectionModeState|FastCharger)/, '');
+}
+
 const SRC_CLASS = { TEL: '', API: 'api', BLE: 'ble', SAMPLE: 'sample' };
 
 // One chip per field: the exact Tesla field name, colored by the channel it last came from,
-// with its age on hover. Strings prefixed "api:" are Fleet API endpoints.
+// with its age on hover; tapping one opens its history. Strings prefixed "api:" are Fleet API endpoints.
 export function chips(fields, signals = {}) {
   const parts = fields.map((f) => {
     if (f.startsWith('api:')) return `<span class="src api" title="Fleet API endpoint">${esc(f.slice(4))}</span>`;
@@ -54,7 +62,8 @@ export function chips(fields, signals = {}) {
     const e = signals[f.replace(/\*$/, '')] || signals[f];
     if (!e) return `<span class="src none" title="No data yet">${esc(f)}</span>`;
     const stale = Date.now() - e.ts > 6 * 3600_000 ? ' stale' : '';
-    return `<span class="src ${SRC_CLASS[e.source] ?? ''}${stale}" title="${esc(e.source)} · ${esc(ago(e.ts))}">${esc(f)}</span>`;
+    const name = f.replace(/\*$/, '');
+    return `<span class="src ${SRC_CLASS[e.source] ?? ''}${stale}" title="${esc(e.source)} · ${esc(ago(e.ts))} · tap for history" role="button" tabindex="0" data-action="sig-open" data-field="${esc(name)}">${esc(f)}</span>`;
   });
   return `<div class="srcs">${parts.join('')}</div>`;
 }
