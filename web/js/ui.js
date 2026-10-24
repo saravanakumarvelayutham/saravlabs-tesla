@@ -22,9 +22,14 @@ export function temp(c, withUnit = false) {
   const v = prefs.temp === 'F' ? c * 9 / 5 + 32 : c;
   return `${Math.round(v)}°${withUnit ? prefs.temp : ''}`;
 }
-export function money(v, currency = 'USD') {
+export function money(v, currency = 'USD', digits) {
   if (typeof v !== 'number') return '—';
-  return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(v);
+  const opts = digits == null ? {} : { minimumFractionDigits: digits, maximumFractionDigits: digits };
+  try {
+    return new Intl.NumberFormat(undefined, { style: 'currency', currency, ...opts }).format(v);
+  } catch {
+    return `${v.toFixed(digits ?? 2)} ${currency}`; // a currency code Intl doesn't know
+  }
 }
 export function ago(ts, now = Date.now()) {
   if (!ts) return 'never';

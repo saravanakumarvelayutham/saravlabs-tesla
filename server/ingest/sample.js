@@ -311,3 +311,22 @@ export class Sample {
 }
 
 const round = (v, d) => Math.round(v * 10 ** d) / 10 ** d;
+
+// Sample stand-in for Tesla's charging_history, cached the way Fleet.cached() stores the real one
+// (marked sample: true). Tesla doesn't publish this response's format, so the record shape follows
+// community clients. It mirrors the simulated Supercharger sessions so session matching can be seen
+// working, and is rebuilt after each simulated Supercharge, the way Tesla posts a bill.
+export function sampleFleetCache(db, { vin }) {
+  const dc = db.prepare('SELECT * FROM charges WHERE dc = 1 AND end_ts IS NOT NULL ORDER BY start_ts').all();
+  const iso = (ts) => new Date(ts).toISOString();
+  const data = dc.map((c, i) => {
+    const kwh = round((c.energy_battery_kwh || 0) * 1.04, 2);
+    const fees = [{ feeType: 'CHARGING', currencyCode: 'USD', pricingType: 'PAYMENT', uom: 'kwh', rateBase: 0.48, usageBase: kwh, totalDue: round(kwh * 0.48, 2), netDue: round(kwh * 0.48, 2) }];
+    if (i % 3 === 2) fees.push({ feeType: 'PARKING', currencyCode: 'USD', uom: 'min', usageBase: 4, rateBase: 1, totalDue: 4, netDue: 4 });
+    return {
+      sessionId: 9000 + c.id, vin, siteLocationName: i % 2 ? 'Mountain View, CA - El Camino Real' : 'Palo Alto, CA - Stanford Shopping Center',
+      chargeStartDateTime: iso(c.start_ts + 40_000), chargeStopDateTime: iso(c.end_ts), unlatchDateTime: iso(c.end_ts + 120_000), fees,
+    };
+  }).reverse();
+  return { charging_history: { ts: Date.now(), sample: true, data: { data, totalResults: data.length } } };
+}
