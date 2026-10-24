@@ -16,6 +16,7 @@ export async function chargeView(state) {
   const cur$ = state.meta.currency;
   const homeCost = m.home.cost;
   const teslaHist = data.tesla_history;
+  const volts = !dc && cur ? sig('ChargerVoltage') : null;
   return `
     <div class="head">
       <div class="stack" style="gap:6px"><div class="k">Charging</div>
@@ -28,7 +29,7 @@ export async function chargeView(state) {
         <circle cx="150" cy="140" r="88" fill="none" stroke="rgba(79,227,255,0.12)" stroke-dasharray="1 5"></circle>
         <text class="m" x="150" y="118" fill="var(--muted)" font-size="10" text-anchor="middle" letter-spacing="1.6">POWER</text>
         <text x="150" y="166" fill="var(--cyan)" font-size="64" font-weight="700" text-anchor="middle" letter-spacing="-2">${cur ? num(kw) : '—'}</text>
-        <text class="m" x="150" y="190" fill="var(--text-2)" font-size="13" text-anchor="middle">kW · ${dc ? 'DC' : 'AC'}</text>
+        <text class="m" x="150" y="190" fill="var(--text-2)" font-size="13" text-anchor="middle">kW · ${dc ? 'DC' : 'AC'}${typeof volts === 'number' ? ` · ${num(volts)} V` : ''}</text>
         <text class="m" x="62" y="252" fill="var(--muted)" font-size="10" text-anchor="middle">0</text>
         <text class="m" x="238" y="252" fill="var(--muted)" font-size="10" text-anchor="middle">${maxKw}</text>
       </svg>
@@ -37,7 +38,7 @@ export async function chargeView(state) {
         <div><div class="k">To limit</div><div style="font-size:22px;font-weight:700">${cur && typeof hours === 'number' ? `${Math.round(hours * 60)} min` : '—'}</div></div>
         <div><div class="k">Added</div><div style="font-size:22px;font-weight:700">${cur ? `${num(sig('DCChargingEnergyIn'), 1)} kWh` : '—'}</div></div>
       </div>
-      ${chips([dc ? 'DCChargingPower' : 'ACChargingPower', 'Soc', 'ChargeLimitSoc', 'TimeToFullCharge', 'DCChargingEnergyIn', 'FastChargerType'], state.signals)}
+      ${chips([dc ? 'DCChargingPower' : 'ACChargingPower', ...(dc ? [] : ['ChargerVoltage']), 'Soc', 'ChargeLimitSoc', 'TimeToFullCharge', 'DCChargingEnergyIn', 'FastChargerType'], state.signals)}
     </div>
 
     <div class="pn">
@@ -62,7 +63,7 @@ export async function chargeView(state) {
         <div><div class="k cyan">Home</div><div style="font-size:18px;font-weight:600">${homeCost != null ? money(homeCost, cur$) : `${num(m.home.kwh, 0)} kWh`}</div>
           <div class="t">${m.home.sessions} sessions · ${num(m.home.kwh, 0)} kWh${m.home.rate ? ` × ${money(m.home.rate, cur$)}` : ''}</div></div>
         <div><div class="k violet">Supercharger</div><div style="font-size:18px;font-weight:600">${num(m.dc.kwh, 0)} kWh</div>
-          <div class="t">${m.dc.sessions} sessions · cost from Tesla's charging history</div></div>
+          <div class="t">${m.dc.sessions} sessions · cost not shown yet (needs Tesla's charging history)</div></div>
       </div>
       ${m.home.rate ? '' : '<div class="t">Set HOME_RATE_PER_KWH on the server to turn home energy into cost.</div>'}
       <div class="t">${teslaHist ? `Tesla charging_history fetched ${new Date(teslaHist.ts).toLocaleString()}; its field format isn't published, so it's shown raw on the Setup page until mapped.` : 'Tesla charging_history not fetched yet (link your Tesla account on Setup).'}</div>

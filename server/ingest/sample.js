@@ -25,6 +25,7 @@ export class Sample {
     this.soc = 72;
     this.odo = 18234.2;
     this.capacity = CAPACITY_KWH + 2.2;
+    this.regen = 1843.6; // lifetime regen kWh (simulated)
   }
 
   put(field, value, ts) {
@@ -115,8 +116,10 @@ export class Sample {
         speed = Math.max(0, Math.min(cruise + 15, speed + (cruise - speed) * 0.3 + (this.rand() - 0.5) * 12));
         this.put('VehicleSpeed', round(speed, 1), ts);
         this.put('PedalPosition', round(Math.max(0, (speed - 10) / 2 + this.rand() * 8), 1), ts);
-        this.put('LongitudinalAcceleration', round((this.rand() - 0.5) * 3.2, 2), ts);
+        const accel = round((this.rand() - 0.5) * 3.2, 2);
+        this.put('LongitudinalAcceleration', accel, ts);
         this.put('LateralAcceleration', round((this.rand() - 0.5) * 5.4, 2), ts);
+        if (accel < 0) this.regen += (-accel * speed) / 3600 * 0.9;
       }
       const d = (speed * 10) / 3600;
       done += d;
@@ -126,6 +129,7 @@ export class Sample {
       const wobble = Math.sin(f * Math.PI * 3) * 0.004;
       this.put('Location', { latitude: from.lat + (dest.lat - from.lat) * f + wobble, longitude: from.lon + (dest.lon - from.lon) * f - wobble }, ts);
       if (step % 6 === 0) {
+        this.put('LifetimeEnergyGainedRegen', round(this.regen, 2), ts);
         this.put('Odometer', round(this.odo, 1), ts);
         this.putBattery(ts);
         this.put('DiStatorTempF', round(55 + this.rand() * 15, 0), ts);
@@ -139,6 +143,7 @@ export class Sample {
     ts += 10_000;
     this.put('VehicleSpeed', 0, ts);
     this.put('Gear', 'ShiftStateP', ts);
+    this.put('LifetimeEnergyGainedRegen', round(this.regen, 2), ts);
     this.setPlace(ts, to);
     this.put('Odometer', round(this.odo, 1), ts + 20_000);
     this.putBattery(ts + 20_000);
@@ -162,7 +167,8 @@ export class Sample {
       addedWall += kwh;
       this.soc = Math.min(toSoc, this.soc + (kwh * (dc ? 1 : 0.92)) / this.capacity * 100);
       this.put(dc ? 'DCChargingPower' : 'ACChargingPower', round(kw, 1), ts);
-      if (dc) this.put('ChargerVoltage', round(395 + this.rand() * 8, 0), ts);
+      // ChargerVoltage is the AC charger's input voltage (Tesla's docs), so only AC sessions have it.
+      if (!dc) this.put('ChargerVoltage', round(238 + this.rand() * 4, 0), ts);
       this.put('DCChargingEnergyIn', round(addedBattery, 2), ts);
       if (!dc) this.put('ACChargingEnergyIn', round(addedWall, 2), ts);
       this.put('TimeToFullCharge', round(Math.max(0, (toSoc - this.soc) / (dc ? 90 : 11)), 2), ts);
@@ -285,7 +291,6 @@ export class Sample {
           this.added += kw / 3600 * 20; // 20x speed
           this.soc += (kw / 3600 * 20) / this.capacity * 100;
           this.put('DCChargingPower', round(kw, 1), now);
-          this.put('ChargerVoltage', 398, now);
           this.put('DCChargingEnergyIn', round(this.added, 2), now);
           this.put('TimeToFullCharge', round((80 - this.soc) / 90, 2), now);
           this.putBattery(now);
