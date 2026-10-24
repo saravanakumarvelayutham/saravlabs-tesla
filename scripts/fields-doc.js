@@ -29,5 +29,5 @@ ${rows.join('\n')}
 ## Not used, and why
 
 - \`LifetimeEnergyUsedDrive\`: Tesla marks it "Semi-truck only". Trip energy comes from the change in \`EnergyRemaining\`.
-- Tesla's \`charging_history\` endpoint: the response format isn't published, so the Setup page shows it raw and nothing is derived from it yet.
+- Tesla's \`charging_history\` endpoint: the response format isn't published. \`server/derive/supercharger.js\` reads the record shape community clients describe (\`chargeStartDateTime\`, \`siteLocationName\`, \`fees[].totalDue\` / \`currencyCode\`) and reports anything else as unrecognized. Checked only against fixtures, not a real response yet; the Setup page still shows the raw response.
 `);

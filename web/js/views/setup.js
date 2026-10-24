@@ -48,7 +48,7 @@ export async function setupView(state_) {
     </div>
     <div class="pn">
       <div class="k">Tesla charging_history (raw)</div>
-      <div class="t">Tesla doesn't publish this response's format, so it's shown as received. Once we see your real data, Supercharger costs can be mapped from it.</div>
+      <div class="t">Tesla doesn't publish this response's format, so it's shown as received. Supercharger costs are read from it using the field names community clients report; if the Charging tab says records weren't read, this raw view shows what Tesla actually sent.</div>
       <button class="bigbtn ghost" data-action="refresh-history" type="button">Fetch now</button>
       <pre>${esc(hist ? JSON.stringify(hist, null, 2).slice(0, 4000) : 'Not fetched yet')}</pre>
     </div>` : ''}

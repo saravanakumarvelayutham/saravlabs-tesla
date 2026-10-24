@@ -3,7 +3,7 @@
 A dashboard for one Tesla Model S Plaid. It's a single web app that installs on the phone's Home Screen and also runs full screen in the car's browser.
 
 - **Car**: live state, car wireframe with tire pressures, lock/climate/charge limit/Sentry/update buttons
-- **Charge**: current session, DC charging curve, monthly kWh and home charging cost
+- **Charge**: current session, DC charging curve, monthly kWh, home and Supercharger cost, cost per mile
 - **Trips**: every drive with route trace and Wh/mi along the way
 - **Health**: pack capacity over time, cell balance, overnight drain with and without Sentry, slow-leak detection per tire
 - **Drive**: 0–60 estimate from your launches, tri-motor torque split, friction circle, motor heat
