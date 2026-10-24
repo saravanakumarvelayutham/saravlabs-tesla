@@ -17,6 +17,8 @@ export async function chargeView(state) {
   const homeCost = m.home.cost;
   const teslaHist = data.tesla_history;
   const volts = !dc && cur ? sig('ChargerVoltage') : null;
+  const histNote = !teslaHist ? "Supercharger cost needs Tesla's charging history: link your Tesla account on Setup."
+    : `${teslaHist.sample ? 'Sample ' : ''}Tesla charging history from ${new Date(teslaHist.ts).toLocaleString()}: ${teslaHist.recognized} of ${teslaHist.total_records} records read. Tesla doesn't publish this format, so the mapping is unverified until checked against your account.`;
   return `
     <div class="head">
       <div class="stack" style="gap:6px"><div class="k">Charging</div>
@@ -58,24 +60,26 @@ export async function chargeView(state) {
 
     <div class="pn">
       <div class="row end"><span class="k">${new Date().toLocaleString([], { month: 'long' })} energy</span>
-        <span class="big glow cyan" style="font-size:34px">${homeCost != null ? money(homeCost, cur$) : `${num(m.home.kwh + m.dc.kwh, 0)} kWh`}</span></div>
+        <span class="big glow cyan" style="font-size:34px">${m.total_cost != null ? money(m.total_cost, cur$) : `${num(m.home.kwh + m.dc.kwh, 0)} kWh`}</span></div>
       <div class="grid2">
         <div><div class="k cyan">Home</div><div style="font-size:18px;font-weight:600">${homeCost != null ? money(homeCost, cur$) : `${num(m.home.kwh, 0)} kWh`}</div>
           <div class="t">${m.home.sessions} sessions · ${num(m.home.kwh, 0)} kWh${m.home.rate ? ` × ${money(m.home.rate, cur$)}` : ''}</div></div>
-        <div><div class="k violet">Supercharger</div><div style="font-size:18px;font-weight:600">${num(m.dc.kwh, 0)} kWh</div>
-          <div class="t">${m.dc.sessions} sessions · cost not shown yet (needs Tesla's charging history)</div></div>
+        <div><div class="k violet">Supercharger</div><div style="font-size:18px;font-weight:600">${m.dc_cost != null ? money(m.dc_cost, cur$) : `${num(m.dc.kwh, 0)} kWh`}</div>
+          <div class="t">${m.dc.sessions} sessions · ${num(m.dc.kwh, 0)} kWh${m.dc_cost != null ? ` · billed by Tesla${m.dc_unmatched ? `, ${m.dc_unmatched} not billed yet` : ''}` : m.dc.sessions ? " · cost not shown yet (needs Tesla's charging history)" : ''}</div></div>
       </div>
+      <div class="row"><span class="k">Cost per mile</span><span style="font-size:18px;font-weight:600">${m.cost_per_mile != null ? money(m.cost_per_mile, cur$, 3) : '—'}</span></div>
+      <div class="t">${m.cost_per_mile != null ? `${money(m.total_cost, cur$)} of charging over ${num(m.miles, 0)} mi driven this month.` : `Needs ${esc(m.missing.join(' and '))}.`}${m.dc_other_currencies ? ` Left out: ${esc(Object.entries(m.dc_other_currencies).map(([c, v]) => money(v, c)).join(', '))}.` : ''}</div>
       ${m.home.rate ? '' : '<div class="t">Set HOME_RATE_PER_KWH on the server to turn home energy into cost.</div>'}
-      <div class="t">${teslaHist ? `Tesla charging_history fetched ${new Date(teslaHist.ts).toLocaleString()}; its field format isn't published, so it's shown raw on the Setup page until mapped.` : 'Tesla charging_history not fetched yet (link your Tesla account on Setup).'}</div>
+      <div class="t">${esc(histNote)}</div>
       ${chips(['ACChargingEnergyIn', 'DCChargingEnergyIn', 'LocatedAtHome', 'api:charging_history'], state.signals)}
     </div>
 
     <div class="pn" style="gap:0">
       <div class="k" style="padding-bottom:6px">Session log</div>
       ${data.sessions.length ? data.sessions.slice(0, 12).map((s) => `<div class="list-row">
-        <div><div>${s.dc ? `${esc((s.fast_charger || 'DC').replace('FastCharger', ''))} · peak ${num(s.peak_kw)} kW` : `${s.at_home ? 'Home' : 'Away'} · AC ${num(s.peak_kw, 1)} kW`}</div>
+        <div><div>${s.dc ? `${esc(s.site || (s.fast_charger || 'DC').replace('FastCharger', ''))} · peak ${num(s.peak_kw)} kW` : `${s.at_home ? 'Home' : 'Away'} · AC ${num(s.peak_kw, 1)} kW`}</div>
         <div class="t mono">${day(s.start_ts)} · ${num(s.start_soc)}→${num(s.end_soc)}% · ${num(s.energy_battery_kwh, 1)} kWh</div></div>
-        <span class="mono">${s.cost != null ? money(s.cost, cur$) : s.dc ? 'DC' : '—'}</span></div>`).join('') : '<div class="empty">No charging sessions yet</div>'}
-      <div class="t" style="padding-top:8px">Sessions come from DetailedChargeState. Home cost uses the charger-side kWh (ACChargingEnergyIn) times your rate.</div>
+        <span class="mono">${s.cost != null ? money(s.cost, cur$) : s.tesla_cost != null ? money(s.tesla_cost, s.tesla_currency || cur$) : s.dc ? 'DC' : '—'}</span></div>`).join('') : '<div class="empty">No charging sessions yet</div>'}
+      <div class="t" style="padding-top:8px">Sessions come from DetailedChargeState. Home cost uses the charger-side kWh (ACChargingEnergyIn) times your rate. Supercharger cost is Tesla's billed total for the history record starting within 30 min of the session.</div>
     </div>`;
 }

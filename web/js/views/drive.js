@@ -70,10 +70,12 @@ export async function driveView(state) {
           <div><div class="k">Lateral</div><div style="font-size:20px;font-weight:700">${num(today.lateral_g, 2)} g</div></div>
           <div><div class="k">Braking</div><div style="font-size:20px;font-weight:700">${num(today.braking_g, 2)} g</div></div>
           <div><div class="k">Accel</div><div style="font-size:20px;font-weight:700;color:var(--amber)">${num(today.accel_g, 2)} g</div></div>
+          <div><div class="k">Brake pressure</div><div style="font-size:20px;font-weight:700">${num(today.brake_peak, 1)}</div><div class="t">peak · ${num(today.brake_events)} stops on the brakes</div></div>
         </div>
       </div>
       <div class="t">${today.accel_sign_learned ? 'Accel/brake direction learned from your launches.' : "Tesla doesn't document which sign means braking; assumed negative until a launch confirms it."}</div>
-      ${chips(['LateralAcceleration', 'LongitudinalAcceleration'], state.signals)}
+      <div class="t">Brake pressure is BrakePedalPos, which Tesla describes as master cylinder pressure with no unit, so it's only comparable with your own other stops. Slowing on regen alone reads 0.</div>
+      ${chips(['LateralAcceleration', 'LongitudinalAcceleration', 'BrakePedalPos'], state.signals)}
     </div>
     <div class="pn">
       <div class="k">Peak heat today</div>

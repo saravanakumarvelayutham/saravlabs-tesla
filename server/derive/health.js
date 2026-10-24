@@ -63,8 +63,20 @@ export class Health {
         leaks.push({ tire: t, psi_per_day: slopes[t], drop_psi: drop, days: pts.length });
       }
     }
+    // The car's own recommended cold pressure, when the garage Pi has read it over Bluetooth.
+    const rcp = (f) => {
+      const e = st.entry(f);
+      return e && typeof e.value === 'number' ? { psi: barToPsi(e.value), ts: e.ts, source: e.source } : null;
+    };
+    const lastSeen = {};
+    for (const [f, t] of Object.entries(TIRES)) {
+      const e = st.entry(f.replace('TpmsPressure', 'TpmsLastSeenPressureTime'));
+      lastSeen[t] = e && e.value != null ? { raw: e.value, ts: e.ts, source: e.source } : null;
+    }
     return {
       current,
+      recommended: { front: rcp('TpmsRcpFront'), rear: rcp('TpmsRcpRear') },
+      last_seen: lastSeen,
       series,
       slopes,
       leaks,

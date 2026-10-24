@@ -63,6 +63,9 @@ export class Sample {
     this.put('CabinOverheatProtectionMode', 'CabinOverheatProtectionModeStateOn', ts);
     this.put('DetailedChargeState', 'DetailedChargeStateDisconnected', ts);
     this.put('BatteryHeaterOn', false, ts);
+    // Over Bluetooth in real life (tesla-control state tire-pressure); 2.9 bar is about 42 psi.
+    this.put('TpmsRcpFront', 2.9, ts);
+    this.put('TpmsRcpRear', 2.9, ts);
   }
 
   // Overnight / workday parking: hourly Soc, drain faster with Sentry on.
@@ -119,6 +122,8 @@ export class Sample {
         const accel = round((this.rand() - 0.5) * 3.2, 2);
         this.put('LongitudinalAcceleration', accel, ts);
         this.put('LateralAcceleration', round((this.rand() - 0.5) * 5.4, 2), ts);
+        // Hard slowing uses the friction brakes; gentle slowing is mostly regen.
+        this.put('BrakePedalPos', accel < -1.2 ? round(-accel * 9 + this.rand() * 4, 1) : 0, ts);
         if (accel < 0) this.regen += (-accel * speed) / 3600 * 0.9;
       }
       const d = (speed * 10) / 3600;
@@ -190,6 +195,8 @@ export class Sample {
       this.put('TpmsPressureFr', round(2.896 + n(), 3), ts);
       this.put('TpmsPressureRl', round(2.896 - Math.max(0, dayIndex - 8) * 0.0075 + n(), 3), ts);
       this.put('TpmsPressureRr', round(2.83 + n(), 3), ts);
+      // The real wire format of these timestamps isn't documented; the sample sends epoch seconds.
+      for (const w of ['Fl', 'Fr', 'Rl', 'Rr']) this.put(`TpmsLastSeenPressureTime${w}`, Math.floor(ts / 1000), ts);
     };
   }
 
@@ -254,7 +261,9 @@ export class Sample {
             if (this.launchAt && el >= this.launchAt + 3) this.launchAt = null;
             this.speed = Math.max(0, this.speed + (45 - this.speed) * 0.1 + (this.rand() - 0.5) * 6);
             this.put('PedalPosition', round(this.speed / 2.2, 0), now);
-            this.put('LongitudinalAcceleration', round((this.rand() - 0.5) * 2.4, 2), now);
+            const accel = round((this.rand() - 0.5) * 2.4, 2);
+            this.put('LongitudinalAcceleration', accel, now);
+            this.put('BrakePedalPos', accel < -0.9 ? round(-accel * 9, 1) : 0, now);
           }
           this.put('LateralAcceleration', round((this.rand() - 0.5) * 4, 2), now);
           this.put('VehicleSpeed', round(this.speed, 1), now);
@@ -311,3 +320,22 @@ export class Sample {
 }
 
 const round = (v, d) => Math.round(v * 10 ** d) / 10 ** d;
+
+// Sample stand-in for Tesla's charging_history, cached the way Fleet.cached() stores the real one
+// (marked sample: true). Tesla doesn't publish this response's format, so the record shape follows
+// community clients. It mirrors the simulated Supercharger sessions so session matching can be seen
+// working, and is rebuilt after each simulated Supercharge, the way Tesla posts a bill.
+export function sampleFleetCache(db, { vin }) {
+  const dc = db.prepare('SELECT * FROM charges WHERE dc = 1 AND end_ts IS NOT NULL ORDER BY start_ts').all();
+  const iso = (ts) => new Date(ts).toISOString();
+  const data = dc.map((c, i) => {
+    const kwh = round((c.energy_battery_kwh || 0) * 1.04, 2);
+    const fees = [{ feeType: 'CHARGING', currencyCode: 'USD', pricingType: 'PAYMENT', uom: 'kwh', rateBase: 0.48, usageBase: kwh, totalDue: round(kwh * 0.48, 2), netDue: round(kwh * 0.48, 2) }];
+    if (i % 3 === 2) fees.push({ feeType: 'PARKING', currencyCode: 'USD', uom: 'min', usageBase: 4, rateBase: 1, totalDue: 4, netDue: 4 });
+    return {
+      sessionId: 9000 + c.id, vin, siteLocationName: i % 2 ? 'Mountain View, CA - El Camino Real' : 'Palo Alto, CA - Stanford Shopping Center',
+      chargeStartDateTime: iso(c.start_ts + 40_000), chargeStopDateTime: iso(c.end_ts), unlatchDateTime: iso(c.end_ts + 120_000), fees,
+    };
+  }).reverse();
+  return { charging_history: { ts: Date.now(), sample: true, data: { data, totalResults: data.length } } };
+}

@@ -26,6 +26,7 @@ Every value lands in `history` (append-only) and `latest`, and the UI shows wher
 |---|---|---|
 | `trips.js` | Trips (Gear leaves P → returns to P), route, Wh/mi per segment | Gear, Odometer, EnergyRemaining, Location, VehicleSpeed |
 | `charging.js` | Sessions, DC curve, peak kW, kWh in, home cost | DetailedChargeState, FastChargerType, DC/ACChargingPower, …EnergyIn |
+| `supercharger.js` | Supercharger cost per session and month, matched to sessions by start time (unverified format) | Fleet API charging_history |
 | `health.js` | Pack capacity by month, cell balance, overnight drain (Sentry vs not), tire slow-leak detection | NominalFullPackEnergyKwh or EnergyRemaining÷BatteryLevel, BrickVoltage*, TPMS |
 | `drive.js` | 0–60 estimate, tri-motor torque split, friction circle, peak heat | VehicleSpeed, Longitudinal/LateralAcceleration, DiTorqueActual*, DiStatorTemp* |
 | `alerts.js` | Push alerts: Sentry alarm, TPMS hard warning, update ready, unlocked/window open away from home, charge complete, slow leak | the above |

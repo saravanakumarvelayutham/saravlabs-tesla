@@ -130,3 +130,36 @@ test('sample mode sends ChargerVoltage only during AC sessions', async () => {
   assert.ok(volts.length > 0);
   assert.ok(volts.every((v) => v.value > 200 && v.value < 260));
 });
+
+test('usual efficiency is the median of recent trips, and needs at least three', () => {
+  const { db, store } = memStore();
+  const trips = new Trips(db, store);
+  const ins = db.prepare('INSERT INTO trips (start_ts, end_ts, start_odo, end_odo, start_energy, end_energy) VALUES (?, ?, ?, ?, ?, ?)');
+  ins.run(T0, T0 + 1, 0, 10, 50, 47); // 300 Wh/mi
+  ins.run(T0 + 10, T0 + 11, 10, 20, 47, 43); // 400
+  assert.equal(trips.usual(), null);
+  ins.run(T0 + 20, T0 + 21, 20, 30, 43, 40.5); // 250
+  ins.run(T0 + 30, T0 + 31, 30, 30.5, 40.5, 40); // under a mile: ignored
+  assert.deepEqual(trips.usual(), { wh_per_mile: 300, trips: 3 });
+});
+
+test('tires report the car recommended pressure and last-seen values', () => {
+  const { db, store } = memStore();
+  const health = new Health(db, store);
+  feed(store, T0, [['TpmsRcpFront', 2.9, 0], ['TpmsLastSeenPressureTimeRl', 1790000000, 0]], 'BLE');
+  const t = health.tires(T0 + 60_000);
+  assert.equal(Math.round(t.recommended.front.psi), 42);
+  assert.equal(t.recommended.rear, null);
+  assert.deepEqual(t.last_seen.RL, { raw: 1790000000, ts: T0, source: 'BLE' });
+});
+
+test('drive stats give the peak brake pressure and count brake applications', async () => {
+  const { Drive } = await import('../server/derive/drive.js');
+  const { db, store } = memStore();
+  const drive = new Drive(db, store);
+  const now = new Date(T0); now.setHours(12);
+  feed(store, now.getTime(), [['BrakePedalPos', 0, 0], ['BrakePedalPos', 12, 1], ['BrakePedalPos', 20, 1.1], ['BrakePedalPos', 0, 2], ['BrakePedalPos', 8, 3], ['BrakePedalPos', 0, 4]]);
+  const d = drive.today(now.getTime() + 300_000);
+  assert.equal(d.brake_peak, 20);
+  assert.equal(d.brake_events, 2);
+});

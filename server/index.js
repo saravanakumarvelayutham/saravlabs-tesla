@@ -1,7 +1,7 @@
 // Entry point: wires storage, ingest, derived insights, Tesla access, push and HTTP together.
 import path from 'node:path';
 import { config } from './config.js';
-import { openDb, kvGet } from './db.js';
+import { openDb, kvGet, kvSet } from './db.js';
 import { Store } from './store.js';
 import { Trips } from './derive/trips.js';
 import { Charging } from './derive/charging.js';
@@ -14,7 +14,7 @@ import { Commands } from './commands.js';
 import { TeslaAuth } from './tesla/auth.js';
 import { Fleet } from './tesla/fleet.js';
 import { startMqtt } from './ingest/mqtt.js';
-import { Sample } from './ingest/sample.js';
+import { Sample, sampleFleetCache } from './ingest/sample.js';
 import { seedSampleNotes } from './ingest/sample-notes.js';
 import { createServer } from './http.js';
 
@@ -60,6 +60,11 @@ function main() {
       sample.soc = store.get('Soc') ?? sample.soc;
       sample.odo = store.get('Odometer') ?? sample.odo;
     }
+    const writeSampleCache = () => {
+      for (const [k, v] of Object.entries(sampleFleetCache(app.db, { vin: cfg.vin || 'SAMPLE' }))) kvSet(app.db, `cache:${k}`, v);
+    };
+    writeSampleCache();
+    app.charging.onEnd(({ session }) => session.dc && writeSampleCache());
     seedSampleNotes(app.db, app.streamedAlerts);
     sample.live();
     console.log('[sample] SAMPLE MODE: all data is simulated');
@@ -80,6 +85,12 @@ function main() {
   setInterval(() => app.alerts.checkAway(Date.now()), 60_000).unref();
   setInterval(() => app.alerts.checkTires(Date.now()), 6 * 3600_000).unref();
   setInterval(() => store.prune(Date.now() - 400 * 86400_000), 24 * 3600_000).unref();
+  // Supercharger bills: Tesla's charging_history, read at most every 6 h (Fleet.cached) once linked.
+  const refreshHistory = () => {
+    if (!cfg.sampleMode && app.fleet && app.auth?.linked) app.fleet.chargingHistory().catch((err) => console.warn('[fleet] charging_history:', err.message));
+  };
+  refreshHistory();
+  setInterval(refreshHistory, 3600_000).unref();
 
   const server = createServer(app);
   const host = config.appPasscode ? '0.0.0.0' : '127.0.0.1';

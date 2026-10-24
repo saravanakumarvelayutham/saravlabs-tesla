@@ -57,6 +57,9 @@ export function carDrivingView(state) {
   const trip = state.trip;
   const total = trip && typeof mins === 'number' ? Math.max(mins + (Date.now() - trip.start_ts) / 60000, 1) : null;
   const frac = total ? 1 - mins / total : 0;
+  const usual = trip?.usual?.wh_per_mile;
+  // Positive = using more energy than usual. Only shown after a few miles, when the number settles.
+  const vsUsual = usual && trip?.wh_per_mile != null && trip.miles >= 2 ? ((trip.wh_per_mile - usual) / usual) * 100 : null;
   return `
     <div class="row"><span class="k">Drive · glance mode · no controls</span>${sampleBadge(state.meta)}</div>
     <div class="glance">
@@ -89,7 +92,9 @@ export function carDrivingView(state) {
         <div class="pn" style="flex:1;justify-content:center">
           <div class="k">This trip</div>
           <div class="big" style="font-size:80px">${num(trip?.wh_per_mile)}</div>
-          <div class="mono green" style="font-size:22px">WH/MI · ${num(trip?.miles, 1)} MI</div>
+          <div class="mono" style="font-size:22px;color:var(--text-2)">WH/MI · ${num(trip?.miles, 1)} MI</div>
+          ${vsUsual != null ? `<div class="mono ${vsUsual > 0 ? 'amber' : 'green'}" style="font-size:24px">${Math.abs(vsUsual) < 1 ? 'SAME AS USUAL' : `${Math.abs(vsUsual).toFixed(0)}% ${vsUsual > 0 ? 'WORSE' : 'BETTER'} THAN USUAL`}</div>
+          <div class="k" style="font-size:12px">Usual: ${num(usual)} Wh/mi, median of your last ${trip.usual.trips} trips</div>` : ''}
           ${chips(['EnergyRemaining', 'Odometer'], state.signals)}
         </div>
       </div>

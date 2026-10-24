@@ -5,6 +5,7 @@ import http from 'node:http';
 import path from 'node:path';
 import { SIGNALS, buildTelemetryConfig } from './signals.js';
 import { ingestBle } from './ingest/ble.js';
+import { costBetween, matchSession, parseChargingHistory } from './derive/supercharger.js';
 import { parseRecentAlerts, parseReleaseNotes } from './derive/vehicle-log.js';
 
 const MIME = {
@@ -103,12 +104,15 @@ export function createServer(app) {
   route('GET', /^\/api\/trips\/(\d+)$/, (req, res, { params }) => app.trips.get(Number(params[0])) || send(res, 404, { error: 'not found' }));
   route('GET', '/api/charging', () => {
     const now = new Date();
+    const hist = app.fleetCache('charging_history');
+    const parsed = hist ? parseChargingHistory(hist.data, { vin: config.vin }) : null;
+    const month = app.charging.monthSummary(now.getFullYear(), now.getMonth());
     return {
       current: app.charging.current(),
-      sessions: app.charging.list(30),
-      month: app.charging.monthSummary(now.getFullYear(), now.getMonth()),
+      sessions: app.charging.list(30).map((s) => withTeslaCost(s, parsed)),
+      month: { ...month, ...monthCosts(app, month, parsed) },
       avg_dc_curve: app.charging.averageDcCurve(),
-      tesla_history: app.fleetCache('charging_history'),
+      tesla_history: hist ? { ts: hist.ts, sample: Boolean(hist.sample), total_records: parsed.total_records, recognized: parsed.recognized, unrecognized: parsed.unrecognized } : null,
     };
   });
   route('GET', /^\/api\/charging\/(\d+)$/, (req, res, { params }) => app.charging.get(Number(params[0])) || send(res, 404, { error: 'not found' }));
@@ -263,6 +267,44 @@ function meta(app) {
     tire_target_psi: config.tireTargetPsi || null,
     currency: config.currency,
     server_time: Date.now(),
+  };
+}
+
+// A DC session with the Tesla history record that matches it (cost, currency, site name).
+function withTeslaCost(s, parsed) {
+  const t = s.dc ? matchSession(parsed, s.start_ts) : null;
+  return t ? { ...s, tesla_cost: t.cost, tesla_currency: t.currency, site: t.site } : s;
+}
+
+// Charging money for the month: home (your rate) + Supercharger (Tesla's billed history), and per mile.
+// Totals are only given when every part is known in your currency: every DC session this month
+// needs a matching Tesla record, otherwise a missing bill would quietly count as $0.
+export function monthCosts(app, month, parsed) {
+  const currency = app.config.currency;
+  const sc = parsed ? costBetween(parsed, month.from, month.to) : {};
+  const scOther = Object.keys(sc).filter((c) => c !== currency);
+  const dcSessions = app.charging.list(1000).filter((s) => s.dc && s.start_ts >= month.from && s.start_ts < month.to);
+  const unmatched = dcSessions.filter((s) => !matchSession(parsed, s.start_ts)).length;
+  const scCost = parsed && (sc[currency] != null || dcSessions.length === 0) ? sc[currency] || 0 : null;
+  const miles = app.trips.list(1000).filter((t) => t.start_ts >= month.from && t.start_ts < month.to && t.miles > 0)
+    .reduce((s, t) => s + t.miles, 0);
+  const homeKnown = month.home.sessions === 0 || month.home.cost != null;
+  const scKnown = scCost != null && unmatched === 0 && !scOther.length;
+  const total = homeKnown && scKnown ? (month.home.cost || 0) + scCost : null;
+  const missing = [];
+  if (!homeKnown) missing.push('your home rate (HOME_RATE_PER_KWH)');
+  if (!parsed) missing.push("Tesla's charging history");
+  else if (unmatched) missing.push(`Tesla records for ${unmatched} of ${dcSessions.length} Supercharger sessions`);
+  if (scOther.length) missing.push(`Supercharger charges in ${currency} (some are in ${scOther.join(', ')})`);
+  if (!(miles > 0)) missing.push('miles driven this month');
+  return {
+    dc_cost: scCost,
+    dc_unmatched: unmatched,
+    dc_other_currencies: scOther.length ? Object.fromEntries(scOther.map((c) => [c, sc[c]])) : null,
+    total_cost: total,
+    miles,
+    cost_per_mile: total != null && miles > 0 ? total / miles : null,
+    missing,
   };
 }
 
