@@ -18,8 +18,9 @@ const DC_CHARGERS = new Set(['FastChargerSupercharger', 'FastChargerCHAdeMO', 'F
 export const isDcCharger = (v) => DC_CHARGERS.has(v);
 
 // TpmsSoftWarnings / TpmsHardWarnings arrive as a TireLocation message. The MQTT dispatcher
-// emits only the populated booleans and, when exactly one is set, unwraps it to a bare `true`
-// (getProtoValue in datastore/mqtt/mqtt_payload.go), so the tire can be unknown.
+// emits only the populated booleans, e.g. {"front_left":true} (getProtoValue in
+// datastore/mqtt/mqtt_payload.go unwraps only the outer Value; seen in test/e2e). A bare `true`
+// is still accepted in case a firmware sends the field untyped; the tire is then unknown.
 export function tireWarnings(v) {
   if (v === true) return ['unknown'];
   if (v && typeof v === 'object') {

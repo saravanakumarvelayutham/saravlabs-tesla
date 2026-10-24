@@ -3,3 +3,4 @@ data/
 .env
 deploy/config/
 *.pem
+test/e2e/results/
