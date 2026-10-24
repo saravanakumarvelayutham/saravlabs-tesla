@@ -5,7 +5,7 @@ import { SIGNALS } from './signals.js';
 // Fields stored as numbers. The fleet-telemetry MQTT README warns that the car may send
 // a float as 12.3 or "12.3" depending on firmware, so numeric strings are coerced.
 const NUMERIC = new Set(Object.entries(SIGNALS)
-  .filter(([k, s]) => s.unit || k.startsWith('DiTorqueActual'))
+  .filter(([k, s]) => s.unit || s.numeric || k.startsWith('DiTorqueActual'))
   .map(([k]) => k));
 
 export function normalizeValue(field, raw) {

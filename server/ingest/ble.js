@@ -34,6 +34,14 @@ export function mapBleState(kind, data) {
     set('TpmsPressureFr', tp.tpmsPressureFr);
     set('TpmsPressureRl', tp.tpmsPressureRl);
     set('TpmsPressureRr', tp.tpmsPressureRr);
+    // The car's recommended cold pressure (bar); not available as a telemetry field.
+    set('TpmsRcpFront', tp.tpmsRcpFrontValue);
+    set('TpmsRcpRear', tp.tpmsRcpRearValue);
+    // google.protobuf.Timestamp, which protojson writes as an RFC 3339 string.
+    set('TpmsLastSeenPressureTimeFl', tp.tpmsLastSeenPressureTimeFl);
+    set('TpmsLastSeenPressureTimeFr', tp.tpmsLastSeenPressureTimeFr);
+    set('TpmsLastSeenPressureTimeRl', tp.tpmsLastSeenPressureTimeRl);
+    set('TpmsLastSeenPressureTimeRr', tp.tpmsLastSeenPressureTimeRr);
   }
   const cz = data.closuresState;
   if (cz) {

@@ -1,6 +1,6 @@
 // Phone · Health tab: battery pack and tires.
 import { load } from '../core.js';
-import { chips, day, lineChart, num, ring, sampleBadge, temp } from '../ui.js';
+import { chips, day, esc, lineChart, num, ring, sampleBadge, temp } from '../ui.js';
 
 const switcher = (on) => `<div class="switch"><a href="#/health" class="${on === 'battery' ? 'on' : ''}">Battery</a><a href="#/health/tires" class="${on === 'tires' ? 'on' : ''}">Tires</a></div>`;
 
@@ -59,9 +59,30 @@ export async function batteryView(state) {
     ${chips(['ModuleTempMin', 'ModuleTempMax', 'BatteryHeaterOn'], state.signals)}`;
 }
 
+// TpmsLastSeenPressureTime*: Tesla doesn't document the wire format, so accept epoch seconds,
+// epoch ms or a date string. Tesla's note: "Timestamp fields report incorrectly. Treating the
+// reported value as Pacific Time will yield the date and time in the vehicle's timezone." So
+// telemetry values are shown in Pacific Time, labeled as the car's local time. Bluetooth values
+// are protobuf Timestamps (real UTC instants) and are shown in this device's time zone.
+export function lastSeenText(e) {
+  if (!e) return null;
+  const v = e.raw;
+  const ms = typeof v === 'number' ? (v < 1e11 ? v * 1000 : v) : typeof v === 'string' ? Date.parse(v) : NaN;
+  if (!Number.isFinite(ms)) return { text: String(v), note: 'unrecognized format' };
+  const pacific = e.source !== 'BLE';
+  const text = new Date(ms).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', ...(pacific ? { timeZone: 'America/Los_Angeles' } : {}) });
+  return { text, note: pacific ? "car's local time" : 'your time' };
+}
+
 export async function tiresView(state) {
   const t = await load('tires', '/api/health/tires', 300_000);
-  const target = state.meta.tire_target_psi; // from TIRE_TARGET_PSI: the door-jamb placard value
+  // The car's recommended cold pressure (Bluetooth) wins; else TIRE_TARGET_PSI, the door-jamb placard value.
+  const rec = t.recommended || {};
+  const fromCar = rec.front || rec.rear;
+  const target = fromCar
+    ? (Math.round(rec.front?.psi) === Math.round(rec.rear?.psi) || !rec.rear || !rec.front ? `${num((rec.front || rec.rear).psi)} psi` : `${num(rec.front.psi)} / ${num(rec.rear.psi)}`)
+    : state.meta.tire_target_psi ? `${state.meta.tire_target_psi} psi` : null;
+  const seen = Object.fromEntries(Object.entries(t.last_seen || {}).map(([k, e]) => [k, lastSeenText(e)]));
   const leak = new Map(t.leaks.map((l) => [l.tire, l]));
   const gauge = (tire, cx, cy) => {
     const c = t.current[tire];
@@ -85,10 +106,18 @@ export async function tiresView(state) {
         <path d="M138,46 C138,26 218,26 218,46 L226,116 L226,280 C226,302 130,302 130,280 L130,116 Z" fill="rgba(79,227,255,0.03)" stroke="rgba(79,227,255,0.55)" stroke-width="1.5"></path>
         ${gauge('FL', 58, 78)}${gauge('FR', 298, 78)}${gauge('RL', 58, 250)}${gauge('RR', 298, 250)}
         <text class="m" x="178" y="172" fill="var(--muted)" font-size="9" text-anchor="middle" letter-spacing="1.2">TARGET</text>
-        <text x="178" y="192" fill="var(--text)" font-size="18" font-weight="600" text-anchor="middle">${target ? `${target} psi` : 'not set'}</text>
+        <text x="178" y="192" fill="var(--text)" font-size="18" font-weight="600" text-anchor="middle">${target || 'not set'}</text>
+        <text class="m" x="178" y="208" fill="var(--muted)" font-size="8" text-anchor="middle" letter-spacing="1">${fromCar ? (rec.front && rec.rear ? 'FRONT / REAR · FROM CAR' : 'FROM CAR') : target ? 'FROM TIRE_TARGET_PSI' : ''}</text>
         <text class="m" x="178" y="330" fill="var(--muted)" font-size="9" text-anchor="middle" letter-spacing="1.2">PSI · READ ${latestTs ? new Date(latestTs).toLocaleString([], { hour: 'numeric', minute: '2-digit' }).toUpperCase() : '—'}</text>
       </svg>
-      <div style="padding:0 8px 8px">${chips(['TpmsPressureFl', 'TpmsPressureFr', 'TpmsPressureRl', 'TpmsPressureRr'], state.signals)}</div>
+      <div style="padding:0 8px 8px">${chips(['TpmsPressureFl', 'TpmsPressureFr', 'TpmsPressureRl', 'TpmsPressureRr', 'TpmsRcpFront', 'TpmsRcpRear'], state.signals)}</div>
+      <div class="t" style="padding:0 8px 8px">${fromCar ? `Target is the car's recommended cold pressure, read over Bluetooth by the garage Pi${(rec.front || rec.rear).source === 'SAMPLE' ? ' (sample value)' : ''}.` : "Target comes from TIRE_TARGET_PSI. Once the garage Pi reads the car's recommended pressure over Bluetooth, that is used instead."}</div>
+    </div>
+    <div class="pn" style="gap:0">
+      <div class="k" style="padding-bottom:6px">Sensor last reported</div>
+      ${['FL', 'FR', 'RL', 'RR'].map((k) => `<div class="kv" style="gap:12px"><span>${k}</span><span class="mono" style="font-size:14px;text-align:right">${seen[k] ? `${esc(seen[k].text)}<div class="t">${seen[k].note}</div>` : '—'}</span></div>`).join('')}
+      <div class="t" style="padding-top:8px">When each wheel's pressure sensor last reported. Tesla says these timestamps "report incorrectly" and should be read as Pacific Time to get the car's local time, so telemetry values are shown that way. The exact format the car sends hasn't been checked on a real car yet.</div>
+      ${chips(['TpmsLastSeenPressureTimeFl', 'TpmsLastSeenPressureTimeFr', 'TpmsLastSeenPressureTimeRl', 'TpmsLastSeenPressureTimeRr'], state.signals)}
     </div>
     <div class="pn${worst ? ' warn' : ''}">
       <div class="row"><span class="k${worst ? ' amber' : ''}">${worst ? `Slow leak detected · ${worst.tire}` : `Cold pressure · ${t.rules.windowDays} days`}</span>
