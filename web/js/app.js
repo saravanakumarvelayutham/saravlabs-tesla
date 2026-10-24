@@ -8,6 +8,7 @@ import { batteryView, tiresView } from './views/health.js';
 import { driveView } from './views/drive.js';
 import { carParkedView, carDrivingView } from './views/car.js';
 import { setupView, loginView } from './views/setup.js';
+import { releaseNotesView, alertsView } from './views/log.js';
 
 const root = document.getElementById('app');
 const dock = document.getElementById('dock');
@@ -74,6 +75,8 @@ function render() {
       else if (path === 'health') html = id === 'tires' ? await tiresView(state) : await batteryView(state);
       else if (path === 'drive') html = await driveView(state);
       else if (path === 'setup') html = await setupView(state);
+      else if (path === 'updates') html = await releaseNotesView(state);
+      else if (path === 'alerts') html = await alertsView(state);
       else html = homeView(state);
     } catch (err) {
       if (err.message === 'login required') return;

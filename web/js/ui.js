@@ -161,6 +161,8 @@ export const ICONS = {
   eye: '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle>',
   warn: '<circle cx="12" cy="12" r="9"></circle><path d="M12 7v6M12 16.5h.01"></path>',
   clock: '<path d="M12 3a9 9 0 1 0 9 9"></path><path d="M12 7v5l3 2"></path>',
+  doc: '<path d="M7 3h7l4 4v14H7z"></path><path d="M14 3v4h4M10 12h5M10 16h5"></path>',
+  bell: '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"></path><path d="M10 20.5a2 2 0 0 0 4 0"></path>',
   gear: '<circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"></path>',
 };
 export const icon = (name, size = 24, color = 'currentColor') =>

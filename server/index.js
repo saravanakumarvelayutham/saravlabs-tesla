@@ -8,12 +8,14 @@ import { Charging } from './derive/charging.js';
 import { Health } from './derive/health.js';
 import { Drive } from './derive/drive.js';
 import { Alerts } from './derive/alerts.js';
+import { StreamedAlerts } from './derive/vehicle-log.js';
 import { Push } from './push.js';
 import { Commands } from './commands.js';
 import { TeslaAuth } from './tesla/auth.js';
 import { Fleet } from './tesla/fleet.js';
 import { startMqtt } from './ingest/mqtt.js';
 import { Sample } from './ingest/sample.js';
+import { seedSampleNotes } from './ingest/sample-notes.js';
 import { createServer } from './http.js';
 
 export function createApp(cfg = config, { dbFile } = {}) {
@@ -31,6 +33,7 @@ export function createApp(cfg = config, { dbFile } = {}) {
     app.fleet = cfg.vin ? new Fleet(db, cfg.tesla, app.auth, cfg.vin) : null;
   }
   app.fleetCache = (what) => kvGet(db, `cache:${what}`);
+  app.streamedAlerts = new StreamedAlerts(db);
   app.commands = new Commands(db, { fleet: app.fleet, sampleMode: cfg.sampleMode, store, broadcast });
   app.alerts = new Alerts(db, store, { push: app.push, health: app.health, charging: app.charging, broadcast });
   return app;
@@ -57,6 +60,7 @@ function main() {
       sample.soc = store.get('Soc') ?? sample.soc;
       sample.odo = store.get('Odometer') ?? sample.odo;
     }
+    seedSampleNotes(app.db, app.streamedAlerts);
     sample.live();
     console.log('[sample] SAMPLE MODE: all data is simulated');
   } else {
@@ -68,7 +72,7 @@ function main() {
       vin: cfg.vin,
       store,
       onConnectivity: (c) => { app.connectivity = { status: c.Status, at: c.CreatedAt }; app.broadcast('connectivity', app.connectivity); },
-      onAlert: (name, a) => app.broadcast('vehicle-alert', { name, ...a }),
+      onAlert: (name, a) => app.broadcast('vehicle-alert', app.streamedAlerts.record(name, a)),
     });
   }
 

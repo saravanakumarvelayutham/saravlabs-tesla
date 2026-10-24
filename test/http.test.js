@@ -4,6 +4,7 @@ import { config } from '../server/config.js';
 import { createApp } from '../server/index.js';
 import { createServer } from '../server/http.js';
 import { COMMANDS } from '../server/commands.js';
+import { kvSet } from '../server/db.js';
 import { buildTelemetryConfig, SIGNALS } from '../server/signals.js';
 
 const cfg = {
@@ -110,5 +111,35 @@ test('static files cannot escape the web folder', async () => {
     assert.equal((await fetch(`${base}/%E0%A4%A`)).status, 400);
   } finally {
     fs.rmSync(sibling, { recursive: true, force: true });
+  }
+});
+
+test('release notes and alerts read only the cache, never Tesla', async () => {
+  const empty = await req('GET', '/api/vehicle/release-notes');
+  assert.equal(empty.status, 200);
+  assert.deepEqual([empty.json.fetched_at, empty.json.notes, empty.json.matched, empty.json.can_fetch], [null, [], null, false]);
+  kvSet(app.db, 'cache:release_notes', { ts: 123, data: { response: { release_notes: [{ title: 'T', customer_version: '2026.32.4' }] } } });
+  kvSet(app.db, 'cache:recent_alerts', { ts: 456, data: { response: { recent_alerts: [{ name: 'A_b', time: '2026-10-20T10:00:00Z', audience: ['customer'] }] } } });
+  app.store.put('Version', '2026.32.4', Date.now(), 'TEL');
+  const notes = (await req('GET', '/api/vehicle/release-notes')).json;
+  assert.equal(notes.fetched_at, 123);
+  assert.equal(notes.notes[0].title, 'T');
+  assert.equal(notes.version, '2026.32.4');
+  const alerts = (await req('GET', '/api/vehicle/alerts')).json;
+  assert.equal(alerts.alerts[0].name, 'A_b');
+  assert.deepEqual(alerts.streamed, []);
+  assert.equal((await req('POST', '/api/tesla/refresh?what=recent_alerts')).status, 503);
+});
+
+test('the Fetch button refreshes through Fleet API once the account is linked', async () => {
+  const calls = [];
+  Object.assign(app, { fleet: { recentAlerts: async (force) => { calls.push(force); return { ts: 1, data: {} }; } }, auth: { linked: true } });
+  try {
+    assert.equal((await req('GET', '/api/vehicle/alerts')).json.can_fetch, true);
+    assert.equal((await req('POST', '/api/tesla/refresh?what=recent_alerts')).status, 200);
+    assert.deepEqual(calls, [true]);
+  } finally {
+    delete app.fleet;
+    delete app.auth;
   }
 });

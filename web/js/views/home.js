@@ -56,7 +56,7 @@ function insights(state) {
     items.push(['#/health', 'clock', 'var(--cyan)', `Sentry nights use ${drain.sentry_avg.toFixed(1)}% overnight`, `Average of ${sentryNights.length} nights${ratio}`]);
   }
   const upd = sig('SoftwareUpdateVersion');
-  if (upd) items.push(['#/', 'download', 'var(--cyan)', `Software update ${esc(upd)} is ready`, 'Install from the button below']);
+  if (upd) items.push(['#/updates', 'download', 'var(--cyan)', `Software update ${esc(upd)} is ready`, 'Release notes · install from the button below']);
   // Leaks and updates already have their own line above, so skip their events here.
   const shown = new Set(['tire_leak', ...(upd ? ['software_update'] : [])]);
   for (const ev of state.events.filter((e) => !shown.has(e.kind)).slice(0, 2)) items.push(['#/', 'pulse', 'var(--violet)', esc(ev.title), `${esc(ev.body || '')} · ${ago(ev.ts)}`]);
@@ -64,6 +64,20 @@ function insights(state) {
   return `<div class="pn" style="gap:12px"><div class="k">Insights</div>
     ${items.slice(0, 4).map(([href, ic, color, title, sub]) => `<a class="insight" href="${href}">${icon(ic, 28, color)}<div class="stack"><span style="font-size:15px;font-weight:500">${title}</span><span class="t">${sub}</span></div></a>`).join('')}
     ${chips(['TpmsPressureRl', 'Soc', 'SentryMode', 'SoftwareUpdateVersion'], state.signals)}
+  </div>`;
+}
+
+// Links to the Software and Alerts screens, with what's waiting on each.
+function logLinks(state) {
+  const al = useData('valerts', '/api/vehicle/alerts', 5 * 60_000);
+  const active = al?.streamed?.filter((a) => a.active).length || 0;
+  const week = Date.now() - 7 * 86400_000;
+  const recent = al ? al.alerts.filter((a) => a.ts >= week).length : null;
+  const alertSub = active ? `${active} active now` : recent != null ? `${recent} in the last 7 days` : 'Recent alerts from the car';
+  const upd = sig('SoftwareUpdateVersion');
+  return `<div class="grid2">
+    <a class="pn tile" href="#/updates">${icon('doc', 22, 'var(--cyan)')}<span style="font-weight:500">Software</span><span class="t">${upd ? `${esc(upd)} ready` : esc(sig('Version') || 'Release notes')}</span></a>
+    <a class="pn tile" href="#/alerts">${icon('bell', 22, active ? 'var(--amber)' : 'var(--cyan)')}<span style="font-weight:500">Alerts</span><span class="t">${esc(alertSub)}</span></a>
   </div>`;
 }
 
@@ -109,6 +123,7 @@ export function homeView(state) {
     ${energyPanel(state)}
     ${streamPanel(state)}
     ${insights(state)}
+    ${logLinks(state)}
     ${commandButtons(state)}
     <div class="t center">Commands go over ${via}, signed with your virtual key${state.meta.sample_mode ? ' · sample mode: nothing is sent to a car' : ''}. Cabin ${temp(sig('InsideTemp'), true)}.</div>`;
 }
