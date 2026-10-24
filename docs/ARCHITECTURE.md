@@ -31,6 +31,7 @@ Every value lands in `history` (append-only) and `latest`, and the UI shows wher
 | `health.js` | Pack capacity by month, cell balance, overnight drain (Sentry vs not), tire slow-leak detection | NominalFullPackEnergyKwh or EnergyRemaining÷BatteryLevel, BrickVoltage*, TPMS |
 | `drive.js` | 0–60 estimate, tri-motor torque split, friction circle, peak heat | VehicleSpeed, Longitudinal/LateralAcceleration, DiTorqueActual*, DiStatorTemp* |
 | `alerts.js` | Push alerts: Sentry alarm, TPMS hard warning, update ready, unlocked/window open away from home, charge complete, slow leak | the above |
+| `vehicle-log.js` | Release notes and recent alerts parsed from cached Fleet API responses (format undocumented, so parsing is tolerant and the raw response stays visible); alerts streamed by Fleet Telemetry, kept with start/end times | `release_notes`, `recent_alerts`, MQTT `alerts/<name>/current` |
 
 Thresholds that are this app's choice (not Tesla's) are labeled as such in the UI.
 

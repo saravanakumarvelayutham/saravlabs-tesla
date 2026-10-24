@@ -6,6 +6,7 @@ import path from 'node:path';
 import { SIGNALS, buildTelemetryConfig } from './signals.js';
 import { ingestBle } from './ingest/ble.js';
 import { costBetween, matchSession, parseChargingHistory } from './derive/supercharger.js';
+import { parseRecentAlerts, parseReleaseNotes } from './derive/vehicle-log.js';
 import { signalHistory } from './history.js';
 import { regenFromCounter, regenTotal } from './derive/regen.js';
 
@@ -128,6 +129,20 @@ export function createServer(app) {
   route('GET', '/api/drive', () => ({ today: app.drive.today(), launches: app.drive.launches(10) }));
   route('GET', '/api/events', () => app.alerts.list(50));
   route('GET', '/api/signals', () => SIGNALS);
+  route('GET', '/api/vehicle/release-notes', () => {
+    const hit = app.fleetCache('release_notes');
+    return {
+      ...cacheMeta(app, hit),
+      ...parseReleaseNotes(hit?.data),
+      version: app.store.get('Version') ?? null,
+      update: app.store.get('SoftwareUpdateVersion') || null,
+      raw: hit?.data ?? null,
+    };
+  });
+  route('GET', '/api/vehicle/alerts', () => {
+    const hit = app.fleetCache('recent_alerts');
+    return { ...cacheMeta(app, hit), ...parseRecentAlerts(hit?.data), streamed: app.streamedAlerts.list(50), raw: hit?.data ?? null };
+  });
 
   // --- commands ---
   route('POST', /^\/api\/command\/([a-z_]+)$/, async (req, res, { params }) => {
@@ -238,6 +253,11 @@ export function createServer(app) {
     }
   });
   return server;
+}
+
+// Fetch time and channel of a cached Fleet API read; can_fetch says whether a refresh can reach Tesla.
+function cacheMeta(app, hit) {
+  return { fetched_at: hit?.ts ?? null, sample: Boolean(hit?.sample), can_fetch: Boolean(app.fleet && app.auth?.linked) };
 }
 
 function meta(app) {
