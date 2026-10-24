@@ -147,7 +147,8 @@ await check('proxy', 'telemetry config goes through tesla-http-proxy over TLS an
   expect(telemetryConfig.iss === pubRaw.toString('base64'), 'iss is not our virtual public key', { iss: telemetryConfig.iss, ours: pubRaw.toString('base64') });
   expect(telemetryConfig.aud === 'com.tesla.fleet.TelemetryClient', `aud ${telemetryConfig.aud}`);
   expect(telemetryConfig.hostname === 'fleet-telemetry' && telemetryConfig.port === 443 && telemetryConfig.ca === ca, 'hostname/port/ca', { hostname: telemetryConfig.hostname, port: telemetryConfig.port });
-  expect(fields.length === Object.keys(SIGNALS).length, `field count ${fields.length} vs ${Object.keys(SIGNALS).length}`);
+  const streamed = Object.entries(SIGNALS).filter(([, sg]) => !sg.bleOnly).length; // BLE-only fields aren't in the config
+  expect(fields.length === streamed, `field count ${fields.length} vs ${streamed}`);
   expect(JSON.stringify(jws.vins) === JSON.stringify([VIN]), 'vins', jws.vins);
   return { app_response: r.json, at_fake_fleet_api: { path: jws.path, vins: jws.vins, jws_header: jws.jws_header, aud: telemetryConfig.aud, iss_matches_virtual_key: true, hostname: telemetryConfig.hostname, port: telemetryConfig.port, ca_matches_file: true, fields: fields.length, alert_types: telemetryConfig.alert_types, signature_bytes: jws.signature_bytes } };
 });
@@ -160,8 +161,9 @@ await check('proxy', 'charging history read goes through the proxy and is cached
   const r = await api('/api/tesla/refresh?what=charging_history', { method: 'POST' });
   expect(r.status === 200 && r.json?.data?.response, `status ${r.status}`, r.json);
   const c = await api('/api/charging');
-  expect(c.json?.tesla_history?.data?.response?.data?.length === 1, 'not in /api/charging', c.json?.tesla_history);
-  return { refresh_status: r.status, cached_ts: c.json.tesla_history.ts, sessions_in_fake_response: c.json.tesla_history.data.response.data.length };
+  // The record shape is the fake's guess (Tesla doesn't publish it); this checks the plumbing.
+  expect(c.json?.tesla_history?.total_records === 1 && !c.json.tesla_history.sample, 'not in /api/charging', c.json?.tesla_history);
+  return { refresh_status: r.status, tesla_history: c.json.tesla_history };
 });
 
 // ---------- 6. Push subscription ----------
