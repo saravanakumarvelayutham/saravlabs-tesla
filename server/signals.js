@@ -32,7 +32,7 @@ export const SIGNALS = {
   BrickVoltageMin: { interval: 600, unit: 'V', unitNote: 'Tesla gives no unit.' },
   ModuleTempMax: { interval: 300, unit: '°C', unitNote: 'Tesla says "maximum thermistor temperature" without a unit.' },
   ModuleTempMin: { interval: 300, unit: '°C', unitNote: 'Tesla gives no unit.' },
-  NominalFullPackEnergyKwh: { interval: 3600, unit: 'kWh', minFirmware: '2026.32', doc: 'Proto fields 260-269 need firmware 2026.32.' },
+  NominalFullPackEnergyKwh: { interval: 3600, unit: 'kWh', minFirmware: '2026.32', unverified: true, doc: 'Proto field 263; fields 260-269 need firmware 2026.32. Not on the Available Data page.' },
 
   // Driving
   Gear: { interval: 1, doc: 'Enum ShiftState (ShiftStateP, ShiftStateD, ...).' },
@@ -40,6 +40,7 @@ export const SIGNALS = {
   Odometer: { interval: 60, unit: 'mi', doc: 'Miles driven.' },
   LongitudinalAcceleration: { interval: 1, unit: 'm/s²', doc: 'Longitudinal acceleration, m/s^2.' },
   LateralAcceleration: { interval: 1, unit: 'm/s²', doc: 'Lateral acceleration, m/s^2.' },
+  BrakePedalPos: { interval: 1, numeric: true, unitNote: 'Tesla: "master cylinder pressure measured in the ESP", no unit. Shown as a relative value.' },
   PedalPosition: { interval: 1, unit: '%', unitNote: 'Tesla says "position of the accelerator pedal" without a unit.' },
 
   // Powertrain (Plaid: front, rear-left, rear-right drive units)
@@ -84,6 +85,16 @@ export const SIGNALS = {
   TpmsPressureFr: { interval: 300, unit: 'bar' },
   TpmsPressureRl: { interval: 300, unit: 'bar' },
   TpmsPressureRr: { interval: 300, unit: 'bar' },
+  // Tesla: "Timestamp fields report incorrectly. Treating the reported value as Pacific Time will
+  // yield the date and time in the vehicle's timezone." The wire format over MQTT isn't documented.
+  TpmsLastSeenPressureTimeFl: { interval: 3600, unitNote: 'Timestamp; see the Pacific Time note.' },
+  TpmsLastSeenPressureTimeFr: { interval: 3600, unitNote: 'As above.' },
+  TpmsLastSeenPressureTimeRl: { interval: 3600, unitNote: 'As above.' },
+  TpmsLastSeenPressureTimeRr: { interval: 3600, unitNote: 'As above.' },
+  // Recommended cold pressure (bar). Only over Bluetooth (TirePressureState.tpms_rcp_*_value in
+  // vehicle.proto); not a telemetry field, so it is left out of the telemetry config.
+  TpmsRcpFront: { interval: 0, unit: 'bar', bleOnly: true },
+  TpmsRcpRear: { interval: 0, unit: 'bar', bleOnly: true },
   TpmsSoftWarnings: { interval: 1, doc: 'TireLocation flags.' },
   TpmsHardWarnings: { interval: 1, doc: 'TireLocation flags.' },
 
@@ -91,7 +102,7 @@ export const SIGNALS = {
   VehicleName: { interval: 3600 },
   Version: { interval: 3600 },
   SoftwareUpdateVersion: { interval: 60, doc: 'Version of an available update.' },
-  SoftwareUpdateAvailable: { interval: 60, minFirmware: '2026.32' },
+  SoftwareUpdateAvailable: { interval: 60, minFirmware: '2026.32', unverified: true, doc: 'Proto field 266. Not on the Available Data page.' },
   // In vehicle_data.proto (field 134, not marked Semi-only) but not listed on Tesla's
   // Available Data page. Streamed so we can see whether a Plaid populates it.
   LifetimeEnergyGainedRegen: { interval: 600, unit: 'kWh', unverified: true },
@@ -105,6 +116,7 @@ export const barToPsi = (bar) => (bar == null ? null : bar * BAR_TO_PSI);
 export function buildTelemetryConfig({ vin, hostname, port, ca, expDays }) {
   const fields = {};
   for (const [name, s] of Object.entries(SIGNALS)) {
+    if (s.bleOnly) continue;
     fields[name] = { interval_seconds: s.interval };
     if (s.minimumDelta) fields[name].minimum_delta = s.minimumDelta;
   }

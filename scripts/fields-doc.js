@@ -3,7 +3,7 @@ import { SIGNALS } from '../server/signals.js';
 
 const cell = (s) => String(s ?? '').replace(/\|/g, '\\|');
 const rows = Object.entries(SIGNALS).map(([name, s]) => {
-  const status = s.unverified ? 'Not in Tesla docs (proto only)' : s.unitNote ? 'Unit not stated by Tesla' : 'Documented';
+  const status = s.bleOnly ? 'Bluetooth only (not a telemetry field)' : s.unverified ? 'Not in Tesla docs (proto only)' : s.unitNote ? 'Unit not stated by Tesla' : 'Documented';
   const notes = [s.doc, s.unitNote, s.minFirmware ? `Needs firmware ${s.minFirmware}+.` : '', s.minimumDelta ? `minimum_delta ${s.minimumDelta}.` : '']
     .filter(Boolean).join(' ');
   return `| \`${name}\` | ${s.interval} s | ${cell(s.unit || '—')} | ${status} | ${cell(notes)} |`;

@@ -5,7 +5,7 @@
 //
 // Odometer and EnergyRemaining stream at 60 s intervals, so their final values can arrive up to a
 // minute after the car is parked. A trip stays open for late values for FINALIZE_MS after Park.
-import { isParked, placeName } from '../util.js';
+import { isParked, median, placeName } from '../util.js';
 
 const FINALIZE_MS = 90_000;
 const MAX_ROUTE_POINTS = 3000;
@@ -128,7 +128,15 @@ export class Trips {
   }
 
   current() {
-    return this.active ? summarize({ ...this.active, end_odo: this.store.get('Odometer'), end_energy: this.store.get('EnergyRemaining') }) : null;
+    if (!this.active) return null;
+    return { ...summarize({ ...this.active, end_odo: this.store.get('Odometer'), end_energy: this.store.get('EnergyRemaining') }), usual: this.usual() };
+  }
+
+  // Your usual efficiency: the median Wh/mi of the last `n` finished trips of a mile or more.
+  // Median, so one hilly or freezing trip doesn't move it much.
+  usual(n = 20) {
+    const vals = this.list(200).filter((t) => t.miles >= 1 && t.wh_per_mile != null).slice(0, n).map((t) => t.wh_per_mile);
+    return vals.length >= 3 ? { wh_per_mile: median(vals), trips: vals.length } : null;
   }
 }
 

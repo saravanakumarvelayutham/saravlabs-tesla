@@ -94,6 +94,9 @@ export class Drive {
       accel_g: lon.length ? Math.max(0, ...lon) / G : null,
       braking_g: lon.length ? Math.abs(Math.min(0, ...lon)) / G : null,
       accel_sign_learned: sign.learned,
+      // Master cylinder pressure; Tesla gives no unit, so it's only compared with itself.
+      brake_peak: max('BrakePedalPos'),
+      brake_events: st.history('BrakePedalPos', since, 100000).filter((h, i, a) => h.value > 0 && !(a[i - 1]?.value > 0)).length,
       gg_points: points.slice(-1500),
       heat: {
         stator: { F: max('DiStatorTempF'), RL: max('DiStatorTempREL'), RR: max('DiStatorTempRER') },

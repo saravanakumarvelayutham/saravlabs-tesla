@@ -71,3 +71,12 @@ test('ingestBle stores with source BLE', () => {
   ingestBle(store, { kind: 'state:charge', data: { chargeState: { usableBatteryLevel: 55 } }, ts: 5000 });
   assert.deepEqual(store.entry('Soc'), { value: 55, ts: 5000, source: 'BLE' });
 });
+
+test('mapBleState reads the recommended pressure and last-seen times from TirePressureState', () => {
+  const out = mapBleState('state:tire-pressure', { tirePressureState: {
+    tpmsPressureFl: 2.9, tpmsRcpFrontValue: 2.9, tpmsRcpRearValue: 3.0, tpmsLastSeenPressureTimeFl: '2026-10-24T13:00:00Z',
+  } });
+  assert.equal(out.TpmsRcpFront, 2.9);
+  assert.equal(out.TpmsRcpRear, 3.0);
+  assert.equal(out.TpmsLastSeenPressureTimeFl, '2026-10-24T13:00:00Z');
+});

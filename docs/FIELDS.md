@@ -32,12 +32,13 @@ Interval is `interval_seconds`: the car sends a field at most once per interval,
 | `BrickVoltageMin` | 600 s | V | Unit not stated by Tesla | Tesla gives no unit. |
 | `ModuleTempMax` | 300 s | °C | Unit not stated by Tesla | Tesla says "maximum thermistor temperature" without a unit. |
 | `ModuleTempMin` | 300 s | °C | Unit not stated by Tesla | Tesla gives no unit. |
-| `NominalFullPackEnergyKwh` | 3600 s | kWh | Documented | Proto fields 260-269 need firmware 2026.32. Needs firmware 2026.32+. |
+| `NominalFullPackEnergyKwh` | 3600 s | kWh | Not in Tesla docs (proto only) | Proto field 263; fields 260-269 need firmware 2026.32. Not on the Available Data page. Needs firmware 2026.32+. |
 | `Gear` | 1 s | — | Documented | Enum ShiftState (ShiftStateP, ShiftStateD, ...). |
 | `VehicleSpeed` | 1 s | mph | Documented | Speed in miles per hour. |
 | `Odometer` | 60 s | mi | Documented | Miles driven. |
 | `LongitudinalAcceleration` | 1 s | m/s² | Documented | Longitudinal acceleration, m/s^2. |
 | `LateralAcceleration` | 1 s | m/s² | Documented | Lateral acceleration, m/s^2. |
+| `BrakePedalPos` | 1 s | — | Unit not stated by Tesla | Tesla: "master cylinder pressure measured in the ESP", no unit. Shown as a relative value. |
 | `PedalPosition` | 1 s | % | Unit not stated by Tesla | Tesla says "position of the accelerator pedal" without a unit. |
 | `DiTorqueActualF` | 1 s | — | Unit not stated by Tesla | Torque; Tesla gives no unit. The app only shows each motor's share. |
 | `DiTorqueActualREL` | 1 s | — | Unit not stated by Tesla | As above. |
@@ -72,12 +73,18 @@ Interval is `interval_seconds`: the car sends a field at most once per interval,
 | `TpmsPressureFr` | 300 s | bar | Documented |  |
 | `TpmsPressureRl` | 300 s | bar | Documented |  |
 | `TpmsPressureRr` | 300 s | bar | Documented |  |
+| `TpmsLastSeenPressureTimeFl` | 3600 s | — | Unit not stated by Tesla | Timestamp; see the Pacific Time note. |
+| `TpmsLastSeenPressureTimeFr` | 3600 s | — | Unit not stated by Tesla | As above. |
+| `TpmsLastSeenPressureTimeRl` | 3600 s | — | Unit not stated by Tesla | As above. |
+| `TpmsLastSeenPressureTimeRr` | 3600 s | — | Unit not stated by Tesla | As above. |
+| `TpmsRcpFront` | 0 s | bar | Bluetooth only (not a telemetry field) |  |
+| `TpmsRcpRear` | 0 s | bar | Bluetooth only (not a telemetry field) |  |
 | `TpmsSoftWarnings` | 1 s | — | Documented | TireLocation flags. |
 | `TpmsHardWarnings` | 1 s | — | Documented | TireLocation flags. |
 | `VehicleName` | 3600 s | — | Documented |  |
 | `Version` | 3600 s | — | Documented |  |
 | `SoftwareUpdateVersion` | 60 s | — | Documented | Version of an available update. |
-| `SoftwareUpdateAvailable` | 60 s | — | Documented | Needs firmware 2026.32+. |
+| `SoftwareUpdateAvailable` | 60 s | — | Not in Tesla docs (proto only) | Proto field 266. Not on the Available Data page. Needs firmware 2026.32+. |
 | `LifetimeEnergyGainedRegen` | 600 s | kWh | Not in Tesla docs (proto only) |  |
 
 ## Not used, and why

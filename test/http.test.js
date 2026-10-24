@@ -94,7 +94,8 @@ test('telemetry config covers every signal with its interval', () => {
   const body = buildTelemetryConfig({ vin: 'V', hostname: 'telemetry.example.com', port: 8443, ca: 'PEM' });
   assert.deepEqual(body.vins, ['V']);
   assert.equal(body.config.hostname, 'telemetry.example.com');
-  assert.equal(Object.keys(body.config.fields).length, Object.keys(SIGNALS).length);
+  assert.equal(Object.keys(body.config.fields).length, Object.values(SIGNALS).filter((s) => !s.bleOnly).length);
+  assert.equal(body.config.fields.TpmsRcpFront, undefined); // Bluetooth-only
   for (const [k, f] of Object.entries(body.config.fields)) assert.equal(f.interval_seconds, SIGNALS[k].interval);
 });
 
