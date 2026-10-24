@@ -9,6 +9,7 @@ import { driveView } from './views/drive.js';
 import { carParkedView, carDrivingView } from './views/car.js';
 import { setupView, loginView } from './views/setup.js';
 import { releaseNotesView, alertsView } from './views/log.js';
+import { signalSheet, sheetSignal } from './views/signal.js';
 
 const root = document.getElementById('app');
 const dock = document.getElementById('dock');
@@ -83,9 +84,19 @@ function render() {
       html = `<div class="pn"><div class="k">Error</div><div>${esc(err.message)}</div></div>`;
     }
     if (wide && path !== '') html = `<div class="car-nav"><a href="#/">← Dashboard</a></div>${html}`;
+    if (state.sheet) html += signalSheet(state);
+    document.body.classList.toggle('sheet-open', Boolean(state.sheet));
+    // Live renders replace the DOM; keep keyboard focus on the same control inside the sheet.
+    const focusKey = document.activeElement?.dataset?.fk;
+    const sheetScroll = root.querySelector('.sheet')?.scrollTop || 0;
     const scroll = window.scrollY;
     root.innerHTML = html;
     window.scrollTo(0, scroll);
+    const sheet = root.querySelector('.sheet');
+    if (sheet) {
+      sheet.scrollTop = sheetScroll;
+      (root.querySelector(`[data-fk="${focusKey}"]`) || (focusKey ? null : sheet.querySelector('.sheet-x')))?.focus({ preventScroll: true });
+    }
     const active = path || '';
     dock.innerHTML = TABS.map(([href, ic, label]) => {
       const on = (href === '#/' && active === '') || (href !== '#/' && href.slice(2) === active);
@@ -99,6 +110,13 @@ root.addEventListener('click', (e) => {
   if (btn) { e.preventDefault(); runCommand(btn); return; }
   const act = e.target.closest('[data-action]');
   if (act && !['INPUT', 'SELECT'].includes(act.tagName)) { e.preventDefault(); actions[act.dataset.action]?.(act); }
+});
+root.addEventListener('keydown', (e) => {
+  const el = e.target.closest('[role="button"][data-action]');
+  if (el && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); actions[el.dataset.action]?.(el); }
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && state.sheet) actions['sig-close']();
 });
 root.addEventListener('change', (e) => {
   const act = e.target.closest('[data-action]');
@@ -123,6 +141,7 @@ function connectStream() {
     state.signals[s.field] = { value: s.value, ts: s.ts, source: s.source };
     state.feed.unshift(s);
     state.feed.length = Math.min(state.feed.length, 40);
+    sheetSignal(s);
     state.live = Date.now();
     throttledRender();
   });
@@ -161,7 +180,7 @@ async function boot() {
 }
 
 setRender(render);
-window.addEventListener('hashchange', () => { window.scrollTo(0, 0); render(); });
+window.addEventListener('hashchange', () => { state.sheet = null; window.scrollTo(0, 0); render(); });
 window.addEventListener('resize', render);
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 boot().catch((err) => { if (err.message !== 'login required') root.innerHTML = `<div class="pn">Could not reach the server: ${esc(err.message)}</div>`; });

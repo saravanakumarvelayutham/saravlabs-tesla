@@ -1,0 +1,45 @@
+# Layered on deploy/docker-compose.yml by test/e2e/run.sh. Only adds what a test needs:
+# fake Tesla endpoints and push service, the fake car, published ports on 127.0.0.1, and trust
+# for the test CAs. Caddy is not started (it needs a public domain for its certificate).
+services:
+  app:
+    environment:
+      NODE_EXTRA_CA_CERTS: /e2e/fakes-ca.pem
+    volumes:
+      - ${E2E_CERTS}:/e2e:ro
+    ports: ["127.0.0.1:18080:8080"]
+
+  fleet-telemetry:
+    volumes:
+      # Production config plus tls.ca_file for the test car CA (made by run.sh).
+      - ${E2E_CERTS}/fleet-telemetry.json:/etc/fleet-telemetry/config.json:ro
+      - ${E2E_CERTS}:/e2e:ro
+    ports: !override []
+
+  tesla-proxy:
+    environment:
+      SSL_CERT_FILE: /e2e/proxy-roots.pem
+    volumes:
+      - ${E2E_CERTS}:/e2e:ro
+
+  fakes:
+    image: node:22-slim
+    command: ["node", "/fakes/server.mjs"]
+    environment:
+      VIN: ${VIN}
+      CERTS_DIR: /e2e
+    volumes:
+      - ../test/e2e/fakes:/fakes:ro
+      - ${E2E_CERTS}:/e2e:ro
+    ports: ["127.0.0.1:18099:8099"]
+    networks:
+      default:
+        aliases: [fleet-api.prd.na.vn.cloud.tesla.com, fleet-auth.prd.vn.cloud.tesla.com, push.e2e.test]
+
+  fake-car:
+    build: ../test/e2e/fake-car
+    profiles: [car]
+    working_dir: /e2e
+    volumes:
+      - ${E2E_CERTS}:/e2e:ro
+    depends_on: [fleet-telemetry]

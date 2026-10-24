@@ -144,3 +144,33 @@ test('the Fetch button refreshes through Fleet API once the account is linked', 
     delete app.auth;
   }
 });
+
+test('raw history returns the newest rows when over the limit', async () => {
+  const t = Date.now() - 3600_000;
+  for (let i = 0; i < 5; i++) app.store.put('OutsideTemp', 10 + i, t + i * 1000);
+  const r = await req('GET', '/api/history?field=OutsideTemp&limit=2');
+  assert.deepEqual(r.json.map((h) => h.value), [13, 14]);
+});
+
+test('signal history endpoint serves numeric and state fields', async () => {
+  const now = Date.now();
+  app.store.put('InsideTemp', 21.5, now - 20 * 60_000);
+  app.store.put('InsideTemp', 23, now - 5 * 60_000);
+  app.store.put('SentryMode', 'SentryModeStateArmed', now - 10 * 60_000);
+  const num = await req('GET', '/api/signals/InsideTemp/history?range=1h');
+  assert.equal(num.status, 200);
+  assert.equal(num.json.kind, 'numeric');
+  assert.equal(num.json.stats.count, 2);
+  assert.equal(num.json.stats.max, 23);
+  assert.equal(num.json.meta.unit, '°C');
+  const st = await req('GET', '/api/signals/SentryMode/history');
+  assert.equal(st.json.range, '24h');
+  assert.equal(st.json.changes[0].value, 'SentryModeStateArmed');
+  assert.equal((await req('GET', '/api/signals/NotAField/history')).status, 404);
+  assert.equal((await req('GET', '/api/signals/InsideTemp/history?range=forever')).status, 400);
+  // Fields the car sends that the app doesn't declare are still inspectable once stored.
+  app.store.put('FutureNumericField', 240, now);
+  const extra = await req('GET', '/api/signals/FutureNumericField/history?range=1h');
+  assert.equal(extra.json.kind, 'numeric');
+  assert.equal(extra.json.meta, null);
+});

@@ -30,6 +30,24 @@ test('a trip runs from leaving Park to returning to Park', () => {
   assert.deepEqual(full.segments.map((s) => Math.round(s.wh_per_mile)), [300, 300]);
 });
 
+test('plugging in right after Park does not count charging as trip energy', () => {
+  const { db, store } = memStore();
+  const trips = new Trips(db, store);
+  feed(store, T0, [
+    ['Odometer', 1000, 0], ['EnergyRemaining', 80, 0], ['Soc', 80, 0],
+    ['Gear', 'ShiftStateD', 1],
+    ['Odometer', 1010, 14], ['EnergyRemaining', 77, 14], ['Soc', 77, 14],
+    ['Gear', 'ShiftStateP', 15],
+    ['EnergyRemaining', 76.8, 15.2], // late final reading: kept
+    ['DetailedChargeState', 'DetailedChargeStateCharging', 15.5],
+    ['EnergyRemaining', 79, 16], ['Soc', 79, 16], // charging inside the finalize window: ignored
+  ]);
+  const [t] = trips.list();
+  assert.equal(t.end_energy, 76.8);
+  assert.equal(t.end_soc, 77);
+  assert.equal(Math.round(t.wh_per_mile), 320);
+});
+
 test('a DC session records peak power, curve and battery-side kWh', () => {
   const { db, store } = memStore();
   const charging = new Charging(db, store, { homeRatePerKwh: 0.3 });

@@ -7,6 +7,8 @@ import { SIGNALS, buildTelemetryConfig } from './signals.js';
 import { ingestBle } from './ingest/ble.js';
 import { costBetween, matchSession, parseChargingHistory } from './derive/supercharger.js';
 import { parseRecentAlerts, parseReleaseNotes } from './derive/vehicle-log.js';
+import { signalHistory } from './history.js';
+import { regenFromCounter, regenTotal } from './derive/regen.js';
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -95,7 +97,12 @@ export function createServer(app) {
   });
   route('GET', '/api/history', (req, res, { query }) => {
     if (!SIGNALS[query.field]) return send(res, 400, { error: 'unknown field' });
-    return app.store.history(query.field, Number(query.since || 0), Math.min(Number(query.limit || 5000), 50000));
+    return app.store.recent(query.field, Number(query.since || 0), Math.min(Number(query.limit || 5000), 50000));
+  });
+  // Tap-to-inspect sheet. Fields outside SIGNALS are allowed once the server has stored them.
+  route('GET', /^\/api\/signals\/([A-Za-z0-9_]+)\/history$/, (req, res, { params, query }) => {
+    if (!SIGNALS[params[0]] && !app.store.entry(params[0])) return send(res, 404, { error: 'unknown field' });
+    return { ...signalHistory(app.store, params[0], { range: query.range || '24h' }), meta: SIGNALS[params[0]] || null };
   });
   route('GET', '/api/trips', (req, res, { query }) => {
     const trips = app.trips.list(Number(query.limit || 50));
@@ -318,22 +325,29 @@ function weekSummary(app, trips) {
     return { miles, kwh, wh_per_mile: miles > 0 ? (kwh * 1000) / miles : null, trips: ok.length };
   };
   const all = app.trips.list(500);
-  const thisWeek = sum(all.filter((t) => t.start_ts >= since));
+  const thisWeekTrips = all.filter((t) => t.start_ts >= since);
+  const thisWeek = sum(thisWeekTrips);
   return {
-    this_week: { ...thisWeek, ...regenShare(app.store, since, Date.now(), thisWeek.kwh) },
+    this_week: { ...thisWeek, ...weekRegen(app, since, thisWeekTrips, thisWeek.kwh) },
     last_week: sum(all.filter((t) => t.start_ts >= prev && t.start_ts < since)),
     weekly: weeklySeries(all),
   };
+}
+
+// The regen counter over the whole week when the car sends it; otherwise the per-trip
+// pack-power estimate summed over this week's trips (see derive/regen.js).
+function weekRegen(app, since, trips, netKwh) {
+  const r = regenShare(app.store, since, Date.now(), netKwh);
+  if (r.regen_kwh != null) return { ...r, regen_source: 'counter' };
+  return regenTotal(trips.map((t) => ({ ...t, ...app.trips.regen(t) })));
 }
 
 // Share of driving energy won back by regen over [from, to]: regen / (net energy used + regen).
 // Net use is the drop in EnergyRemaining, which already has regen added back in.
 // Needs LifetimeEnergyGainedRegen, which is in Tesla's proto but not on their docs page.
 export function regenShare(store, from, to, netKwh) {
-  const a = store.valueAt('LifetimeEnergyGainedRegen', from);
-  const b = store.valueAt('LifetimeEnergyGainedRegen', to);
-  if (typeof a !== 'number' || typeof b !== 'number' || b < a) return { regen_kwh: null, regen_share: null };
-  const regen = b - a;
+  const regen = regenFromCounter(store, from, to);
+  if (regen == null) return { regen_kwh: null, regen_share: null };
   return { regen_kwh: regen, regen_share: netKwh > 0 ? regen / (netKwh + regen) : null };
 }
 

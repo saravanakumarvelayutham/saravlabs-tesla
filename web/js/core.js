@@ -4,7 +4,7 @@ export const setRender = (fn) => { renderFn = fn; };
 export const render = () => renderFn();
 export const actions = {};
 
-export const state = { meta: null, signals: {}, trip: null, charge: null, feed: [], cache: {}, events: [] };
+export const state = { meta: null, signals: {}, trip: null, charge: null, feed: [], cache: {}, events: [], sheet: null };
 
 export async function api(path, opts = {}) {
   const res = await fetch(path, {

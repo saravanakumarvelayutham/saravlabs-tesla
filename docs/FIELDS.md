@@ -32,6 +32,8 @@ Interval is `interval_seconds`: the car sends a field at most once per interval,
 | `BrickVoltageMin` | 600 s | V | Unit not stated by Tesla | Tesla gives no unit. |
 | `ModuleTempMax` | 300 s | °C | Unit not stated by Tesla | Tesla says "maximum thermistor temperature" without a unit. |
 | `ModuleTempMin` | 300 s | °C | Unit not stated by Tesla | Tesla gives no unit. |
+| `PackVoltage` | 5 s | V | Unit not stated by Tesla | Tesla says "voltage measured on the battery side of the HV contactors" without a unit. minimum_delta 1. |
+| `PackCurrent` | 1 s | A | Unit not stated by Tesla | Tesla says "current measured at the HV contactors" without a unit or sign convention. minimum_delta 2. |
 | `NominalFullPackEnergyKwh` | 3600 s | kWh | Not in Tesla docs (proto only) | Proto field 263; fields 260-269 need firmware 2026.32. Not on the Available Data page. Needs firmware 2026.32+. |
 | `Gear` | 1 s | — | Documented | Enum ShiftState (ShiftStateP, ShiftStateD, ...). |
 | `VehicleSpeed` | 1 s | mph | Documented | Speed in miles per hour. |
@@ -39,6 +41,7 @@ Interval is `interval_seconds`: the car sends a field at most once per interval,
 | `LongitudinalAcceleration` | 1 s | m/s² | Documented | Longitudinal acceleration, m/s^2. |
 | `LateralAcceleration` | 1 s | m/s² | Documented | Lateral acceleration, m/s^2. |
 | `BrakePedalPos` | 1 s | — | Unit not stated by Tesla | Tesla: "master cylinder pressure measured in the ESP", no unit. Shown as a relative value. |
+| `GradeEstimatePercent` | 5 s | % | Not in Tesla docs (proto only) | Needs firmware 2026.32+. |
 | `PedalPosition` | 1 s | % | Unit not stated by Tesla | Tesla says "position of the accelerator pedal" without a unit. |
 | `DiTorqueActualF` | 1 s | — | Unit not stated by Tesla | Torque; Tesla gives no unit. The app only shows each motor's share. |
 | `DiTorqueActualREL` | 1 s | — | Unit not stated by Tesla | As above. |
@@ -85,7 +88,7 @@ Interval is `interval_seconds`: the car sends a field at most once per interval,
 | `Version` | 3600 s | — | Documented |  |
 | `SoftwareUpdateVersion` | 60 s | — | Documented | Version of an available update. |
 | `SoftwareUpdateAvailable` | 60 s | — | Not in Tesla docs (proto only) | Proto field 266. Not on the Available Data page. Needs firmware 2026.32+. |
-| `LifetimeEnergyGainedRegen` | 600 s | kWh | Not in Tesla docs (proto only) |  |
+| `LifetimeEnergyGainedRegen` | 60 s | kWh | Not in Tesla docs (proto only) |  |
 
 ## Not used, and why
 

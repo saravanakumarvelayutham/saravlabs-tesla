@@ -1,23 +1,21 @@
 // Phone · Trips tab and trip detail.
-import { load } from '../core.js';
-import { chips, day, esc, lineChart, money, num, ring, sampleBadge, temp } from '../ui.js';
+import { load, render } from '../core.js';
+import { chips, day, esc, lineChart, money, num, prefs, ring, sampleBadge, temp } from '../ui.js';
+import { ATTRIBUTION, ATTRIBUTION_URL, TILE, darkFilter, fitView, tileHref, tilesFor } from '../map.js';
 
 const effColor = (wh) => (wh == null ? '#5B6878' : wh < 280 ? 'var(--cyan)' : wh <= 340 ? 'var(--violet)' : 'var(--amber)');
 
-// Route drawn on the grid (no map tiles, so no map provider or API key is needed).
-function routeSvg(trip) {
+// Route trace colored by efficiency, over dark-restyled OpenStreetMap tiles when the Map tiles
+// setting is on (see map.js for the tile source and its terms). Off, it's drawn on the bare grid.
+export function routeSvg(trip, { tiles = prefs.maps, href = (url) => tileHref(url, render), w = 356, h = 250 } = {}) {
   const pts = trip.route || [];
   if (pts.length < 2) return '<div class="empty">No route points for this trip (needs the vehicle_location scope).</div>';
-  const lats = pts.map((p) => p[0]);
-  const lons = pts.map((p) => p[1]);
-  const [minLat, maxLat, minLon, maxLon] = [Math.min(...lats), Math.max(...lats), Math.min(...lons), Math.max(...lons)];
-  const w = 356;
-  const h = 250;
-  const pad = 26;
-  const kx = Math.cos(((minLat + maxLat) / 2) * Math.PI / 180);
-  const span = Math.max((maxLon - minLon) * kx, maxLat - minLat) || 1e-4;
-  const X = (lon) => pad + ((lon - minLon) * kx / span) * (w - pad * 2);
-  const Y = (lat) => h - pad - ((lat - minLat) / span) * (h - pad * 2);
+  const view = fitView(pts, { w, h, pad: 26 });
+  const { X, Y } = view;
+  const uid = `r${String(trip.id ?? 0).replace(/\W/g, '')}`;
+  const map = tiles
+    ? `<g filter="url(#${uid}f)">${tilesFor(view, w, h).map((t) => ({ ...t, src: href(t.url) })).filter((t) => t.src).map((t) => `<image href="${t.src}" x="${t.x.toFixed(1)}" y="${t.y.toFixed(1)}" width="${TILE}" height="${TILE}"></image>`).join('')}</g>`
+    : '';
   const segOf = (ts) => trip.segments?.find((s) => ts >= s.from && ts <= s.to)?.wh_per_mile ?? null;
   let lines = '';
   for (let i = 1; i < pts.length; i++) {
@@ -27,20 +25,45 @@ function routeSvg(trip) {
   }
   const s = pts[0];
   const e = pts[pts.length - 1];
-  return `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="Route trace colored by energy use">
+  const ly = h - 18;
+  return `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="Route trace colored by energy use${tiles ? ', over an OpenStreetMap map' : ''}">
+    <defs>
+      <clipPath id="${uid}c"><rect width="${w}" height="${h}"></rect></clipPath>
+      <pattern id="${uid}g" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24" fill="none" stroke="var(--grid)" stroke-width="1"></path></pattern>
+      ${tiles ? `${darkFilter(`${uid}f`)}<linearGradient id="${uid}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#060B12" stop-opacity="0"></stop><stop offset="1" stop-color="#060B12" stop-opacity="0.9"></stop></linearGradient>` : ''}
+    </defs>
     <rect width="${w}" height="${h}" fill="#060B12"></rect>
-    ${lines}
-    <circle cx="${X(s[1])}" cy="${Y(s[0])}" r="6" fill="var(--bg)" stroke="var(--text)" stroke-width="2"></circle>
-    <circle cx="${X(e[1])}" cy="${Y(e[0])}" r="7" fill="var(--cyan)"></circle>
-    <rect class="m" x="12" y="232" width="10" height="4" fill="var(--cyan)"></rect><text class="m" x="26" y="237" fill="var(--text-2)" font-size="9">&lt;280</text>
-    <rect x="70" y="232" width="10" height="4" fill="var(--violet)"></rect><text class="m" x="84" y="237" fill="var(--text-2)" font-size="9">280–340</text>
-    <rect x="146" y="232" width="10" height="4" fill="var(--amber)"></rect><text class="m" x="160" y="237" fill="var(--text-2)" font-size="9">&gt;340 Wh/mi</text>
+    <g clip-path="url(#${uid}c)">${map}<rect width="${w}" height="${h}" fill="url(#${uid}g)"></rect>${tiles ? `<rect y="${h - 48}" width="${w}" height="48" fill="url(#${uid}s)"></rect>` : ''}${lines}</g>
+    <circle cx="${X(s[1]).toFixed(1)}" cy="${Y(s[0]).toFixed(1)}" r="6" fill="var(--bg)" stroke="var(--text)" stroke-width="2"></circle>
+    <circle cx="${X(e[1]).toFixed(1)}" cy="${Y(e[0]).toFixed(1)}" r="7" fill="var(--cyan)"></circle>
+    <rect x="12" y="${ly - 5}" width="10" height="4" fill="var(--cyan)"></rect><text class="m" x="26" y="${ly}" fill="var(--text-2)" font-size="9">&lt;280</text>
+    <rect x="70" y="${ly - 5}" width="10" height="4" fill="var(--violet)"></rect><text class="m" x="84" y="${ly}" fill="var(--text-2)" font-size="9">280–340</text>
+    <rect x="146" y="${ly - 5}" width="10" height="4" fill="var(--amber)"></rect><text class="m" x="160" y="${ly}" fill="var(--text-2)" font-size="9">&gt;340 Wh/mi</text>
     <text class="m" x="12" y="20" fill="var(--muted)" font-size="9" letter-spacing="1.2">ROUTE FROM LOCATION · ${pts.length} POINTS</text>
+    ${tiles ? `<a href="${ATTRIBUTION_URL}" target="_blank" rel="noopener"><text x="${w - 6}" y="${h - 5}" fill="var(--text-2)" font-size="8" text-anchor="end">${ATTRIBUTION}</text></a>` : ''}
   </svg>`;
 }
 
+// Where a regen figure came from (server/derive/regen.js), for labels and source chips.
+export const regenFields = (r) => (r?.regen_source === 'pack_power' ? ['PackVoltage', 'PackCurrent', 'EnergyRemaining']
+  : r?.regen_source === 'mixed' ? ['LifetimeEnergyGainedRegen', 'PackVoltage', 'PackCurrent'] : ['LifetimeEnergyGainedRegen']);
+export const regenNote = (r) => (r?.regen_source === 'pack_power'
+  ? 'Estimated from pack voltage × current, since the car isn\'t sending its regen counter.'
+  : r?.regen_source === 'mixed' ? 'Partly from LifetimeEnergyGainedRegen, partly estimated from pack voltage × current.' : '');
+
 const tripName = (t) => `${esc(t.start_place || 'Away')} → ${esc(t.end_place || 'Away')}`;
 const tripCost = (t, meta) => (meta.home_rate && t.kwh != null ? money(t.kwh * meta.home_rate, meta.currency) : null);
+
+// Regen and the steepest climb, for the trip detail page.
+function tripExtras(trip) {
+  const regen = trip.regen_share != null
+    ? `<span class="green">Regen ${num(trip.regen_share * 100)}%</span>: ${num(trip.regen_kwh, 2)} kWh back${trip.regen_source === 'pack_power' ? ' (estimated from pack power)' : ''}`
+    : 'Regen: no data for this trip';
+  const graded = (trip.segments || []).filter((s) => s.grade_pct != null);
+  const climb = graded.length ? graded.reduce((a, b) => (b.grade_pct > a.grade_pct ? b : a)) : null;
+  const grade = climb ? ` · steepest stretch ${num(climb.grade_pct, 1)}% grade at ${num(climb.wh_per_mile)} Wh/mi` : '';
+  return regen + grade;
+}
 
 function tripCard(trip, state, full) {
   return `<div class="pn" style="padding:0;overflow:hidden">
@@ -51,8 +74,9 @@ function tripCard(trip, state, full) {
       <div><div class="k">Wh/mi</div><div style="font-size:17px;font-weight:700;color:${effColor(trip.wh_per_mile)}">${num(trip.wh_per_mile)}</div></div>
       <div><div class="k">${tripCost(trip, state.meta) ? 'Cost' : 'Energy'}</div><div style="font-size:17px;font-weight:700">${tripCost(trip, state.meta) || `${num(trip.kwh, 1)} kWh`}</div></div>
     </div>
-    ${full ? `<div class="t" style="padding:0 16px 8px">Max ${num(trip.max_speed)} mph · outside ${temp(trip.outside_temp, true)} · battery ${num(trip.start_soc)}→${num(trip.end_soc)}%</div>` : ''}
-    <div style="padding:0 16px 14px">${chips(['Location', 'Gear', 'Odometer', 'EnergyRemaining', 'VehicleSpeed'], state.signals)}</div>
+    ${full ? `<div class="t" style="padding:0 16px 8px">Max ${num(trip.max_speed)} mph · outside ${temp(trip.outside_temp, true)} · battery ${num(trip.start_soc)}→${num(trip.end_soc)}%</div>
+    <div class="t" style="padding:0 16px 8px">${tripExtras(trip)}</div>` : ''}
+    <div style="padding:0 16px 14px">${chips([...new Set(['Location', 'Gear', 'Odometer', 'EnergyRemaining', 'VehicleSpeed', ...(full ? [...regenFields(trip), 'GradeEstimatePercent'] : [])])], state.signals)}</div>
   </div>`;
 }
 
@@ -75,11 +99,12 @@ export async function tripsView(state) {
       <div class="pn" style="align-items:center;justify-content:center">
         ${share != null ? `<svg width="110" height="110" viewBox="0 0 110 110" role="img" aria-label="Regen recovered ${num(share * 100)} percent of energy used this week">${ring({ cx: 55, cy: 55, r: 44, frac: share, color: 'var(--green)' })}<text x="55" y="62" fill="var(--text)" font-size="22" font-weight="700" text-anchor="middle">${num(share * 100)}%</text></svg>
           <div class="k center">Regen recovered this week</div>
-          <div class="t center">${num(tw.regen_kwh, 1)} kWh back of ${num(tw.kwh + tw.regen_kwh, 1)} kWh used · ${num(regenSig?.value, 0)} kWh lifetime</div>`
+          <div class="t center">${num(tw.regen_kwh, 1)} kWh back of ${num(tw.kwh + tw.regen_kwh, 1)} kWh used${regenSig ? ` · ${num(regenSig.value, 0)} kWh lifetime` : ''}</div>
+          ${regenNote(tw) ? `<div class="t center">${esc(regenNote(tw))}</div>` : ''}`
           : regenSig ? `<div class="k center">Regen recovered</div><div class="big center" style="font-size:28px">${num(regenSig.value, 0)} kWh</div>
           <div class="t center">Lifetime total. A weekly share needs a reading from before this week and trips with energy data.</div>`
-          : `<div class="k center">Regen recovered</div><div class="t center">No LifetimeEnergyGainedRegen data. It's in Tesla's proto but not on their docs page, so this shows once your Plaid sends it.</div>`}
-        ${chips(['LifetimeEnergyGainedRegen'], state.signals)}
+          : `<div class="k center">Regen recovered</div><div class="t center">No regen data this week. It needs LifetimeEnergyGainedRegen (in Tesla's proto, not on their docs page) or PackVoltage and PackCurrent over a trip.</div>`}
+        ${chips(regenFields(tw), state.signals)}
       </div>
       <div class="pn" style="justify-content:center">
         <div class="k">This week</div>

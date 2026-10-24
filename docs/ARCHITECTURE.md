@@ -25,6 +25,7 @@ Every value lands in `history` (append-only) and `latest`, and the UI shows wher
 | Module | What it works out | From |
 |---|---|---|
 | `trips.js` | Trips (Gear leaves P → returns to P), route, Wh/mi per segment | Gear, Odometer, EnergyRemaining, Location, VehicleSpeed |
+| `regen.js` | Regen kWh and share per trip and week: the regen counter when the car sends it, else an estimate from pack voltage × current, checked against the EnergyRemaining drop | LifetimeEnergyGainedRegen, PackVoltage, PackCurrent, EnergyRemaining |
 | `charging.js` | Sessions, DC curve, peak kW, kWh in, home cost | DetailedChargeState, FastChargerType, DC/ACChargingPower, …EnergyIn |
 | `supercharger.js` | Supercharger cost per session and month, matched to sessions by start time (unverified format) | Fleet API charging_history |
 | `health.js` | Pack capacity by month, cell balance, overnight drain (Sentry vs not), tire slow-leak detection | NominalFullPackEnergyKwh or EnergyRemaining÷BatteryLevel, BrickVoltage*, TPMS |
@@ -41,6 +42,8 @@ Thresholds that are this app's choice (not Tesla's) are labeled as such in the U
 ## Front end
 
 No build step: `web/` is static ES modules. `core.js` holds state and the API client, `app.js` routes and opens the SSE stream, each screen is a view function returning HTML. Width ≥ 1000 px (or `?view=car`) shows the car-browser layout, which switches to a glance view with no controls while the car isn't in Park. The service worker caches the shell and shows push notifications.
+
+Trip routes are drawn over OpenStreetMap raster tiles (`web/js/map.js`), recolored to the dashboard palette by an SVG filter. No key or account is needed; the [OSMF tile usage policy](https://operations.osmfoundation.org/policies/tiles/) asks for visible attribution (drawn on the map), the browser's normal Referer and User-Agent, no prefetching and no offline storage. Each tile is fetched once per page session and reused from memory, because views re-render on every live signal. Setup → Display → *Map tiles behind trip routes* turns them off, and then no request goes to openstreetmap.org.
 
 ## Security
 

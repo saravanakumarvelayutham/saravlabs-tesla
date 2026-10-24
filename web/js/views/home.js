@@ -1,6 +1,6 @@
 // Phone · Car tab: live status, car wireframe, energy, signal stream, insights, commands.
 import { sig, isDriving, useData } from '../core.js';
-import { ago, carTop, chips, clock, esc, icon, num, sampleBadge, temp } from '../ui.js';
+import { ago, carTop, chips, clock, esc, fmtValue, icon, num, sampleBadge, temp } from '../ui.js';
 
 export function liveLine(state) {
   const latest = Object.values(state.signals).reduce((m, e) => Math.max(m, e.ts || 0), 0);
@@ -34,11 +34,10 @@ function streamPanel(state) {
   const rows = state.feed.length
     ? state.feed.slice(0, 6)
     : Object.entries(state.signals).map(([field, e]) => ({ field, ...e })).sort((a, b) => b.ts - a.ts).slice(0, 6);
-  const fmt = (v) => (v && typeof v === 'object' ? (v.latitude != null ? `${v.latitude.toFixed(4)}, ${v.longitude.toFixed(4)}` : '{…}') : String(v).replace(/^(ShiftState|SentryModeState|DetailedChargeState|WindowState|HvacPowerState|FastCharger)/, ''));
   return `<div class="pn" style="gap:4px">
     <div class="row" style="padding-bottom:4px"><span class="k">Signal stream</span><span class="k" style="color:${state.live ? 'var(--green)' : 'var(--muted)'}">● ${state.live ? 'Receiving' : 'Idle'}</span></div>
-    ${rows.map((r, i) => `<div class="st" style="${i > 4 ? 'opacity:.55' : ''}"><span class="ts">${clock(r.ts)}</span><span class="f">${esc(r.field)}</span><span>${esc(fmt(r.value))}</span></div>`).join('')}
-    <div class="t" style="padding-top:6px">The raw feed your server receives, newest first.</div>
+    ${rows.map((r, i) => `<button type="button" class="st tap" data-action="sig-open" data-field="${esc(r.field)}" aria-label="${esc(r.field)} history" style="${i > 4 ? 'opacity:.55' : ''}"><span class="ts">${clock(r.ts)}</span><span class="f">${esc(r.field)}</span><span>${esc(fmtValue(r.value))} <span class="chev">›</span></span></button>`).join('')}
+    <div class="t" style="padding-top:6px">The raw feed your server receives, newest first. Tap a signal for its history.</div>
   </div>`;
 }
 
