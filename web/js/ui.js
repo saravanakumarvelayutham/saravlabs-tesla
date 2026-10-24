@@ -8,6 +8,9 @@ export const prefs = {
   set temp(v) { try { localStorage.setItem('plaid.temp', v); } catch { /* private mode */ } },
   get sources() { return pref('plaid.sources', '1') === '1'; },
   set sources(v) { try { localStorage.setItem('plaid.sources', v ? '1' : '0'); } catch { /* private mode */ } },
+  // OpenStreetMap tiles behind trip routes. Off means no requests go to tile.openstreetmap.org.
+  get maps() { return pref('plaid.maps', '1') === '1'; },
+  set maps(v) { try { localStorage.setItem('plaid.maps', v ? '1' : '0'); } catch { /* private mode */ } },
 };
 
 export const BAR_TO_PSI = 14.503773773;
