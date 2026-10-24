@@ -64,6 +64,12 @@ export class Store extends EventEmitter {
       .map((r) => ({ value: JSON.parse(r.value), ts: r.ts, source: r.source }));
   }
 
+  // The last reading at or before ts (fields only arrive when they change).
+  valueAt(field, ts) {
+    const r = this.db.prepare('SELECT value FROM history WHERE field = ? AND ts <= ? ORDER BY ts DESC LIMIT 1').get(field, ts);
+    return r ? JSON.parse(r.value) : null;
+  }
+
   prune(olderThanTs) {
     this.db.prepare('DELETE FROM history WHERE ts < ?').run(olderThanTs);
   }

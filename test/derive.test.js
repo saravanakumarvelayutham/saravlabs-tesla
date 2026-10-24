@@ -102,3 +102,31 @@ test('battery capacity is estimated from EnergyRemaining and BatteryLevel at 50%
   assert.equal(b.method, 'estimate');
   assert.equal(b.latest_kwh, 95); // the 40% reading is skipped
 });
+
+test('weekly regen share is regen over net energy plus regen, from LifetimeEnergyGainedRegen', async () => {
+  const { regenShare } = await import('../server/http.js');
+  const { store } = memStore();
+  feed(store, T0, [['LifetimeEnergyGainedRegen', 100, 0], ['LifetimeEnergyGainedRegen', 102, 60], ['LifetimeEnergyGainedRegen', 103, 120]]);
+  // 3 kWh regen in the window, 9 kWh net use: 3 / (9 + 3) = 25%.
+  const r = regenShare(store, T0 + 30 * 60_000, T0 + 180 * 60_000, 9);
+  assert.equal(r.regen_kwh, 3);
+  assert.equal(r.regen_share, 0.25);
+  // No reading from before the window: no share rather than a guess.
+  assert.equal(regenShare(store, T0 - 60_000, T0 + 180 * 60_000, 9).regen_share, null);
+  const { store: empty } = memStore();
+  assert.deepEqual(regenShare(empty, T0, T0 + 1, 9), { regen_kwh: null, regen_share: null });
+});
+
+test('sample mode sends ChargerVoltage only during AC sessions', async () => {
+  const { Sample } = await import('../server/ingest/sample.js');
+  const { store } = memStore();
+  const sample = new Sample(store);
+  const volts = [];
+  store.on('signal', (s) => { if (s.field === 'ChargerVoltage') volts.push(s); });
+  sample.soc = 30;
+  let t = sample.charge(T0, { dc: true, toSoc: 60 });
+  assert.equal(volts.length, 0);
+  sample.charge(t + 60_000, { dc: false, toSoc: 70 });
+  assert.ok(volts.length > 0);
+  assert.ok(volts.every((v) => v.value > 200 && v.value < 260));
+});

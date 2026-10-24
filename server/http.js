@@ -256,7 +256,23 @@ function weekSummary(app, trips) {
     return { miles, kwh, wh_per_mile: miles > 0 ? (kwh * 1000) / miles : null, trips: ok.length };
   };
   const all = app.trips.list(500);
-  return { this_week: sum(all.filter((t) => t.start_ts >= since)), last_week: sum(all.filter((t) => t.start_ts >= prev && t.start_ts < since)), weekly: weeklySeries(all) };
+  const thisWeek = sum(all.filter((t) => t.start_ts >= since));
+  return {
+    this_week: { ...thisWeek, ...regenShare(app.store, since, Date.now(), thisWeek.kwh) },
+    last_week: sum(all.filter((t) => t.start_ts >= prev && t.start_ts < since)),
+    weekly: weeklySeries(all),
+  };
+}
+
+// Share of driving energy won back by regen over [from, to]: regen / (net energy used + regen).
+// Net use is the drop in EnergyRemaining, which already has regen added back in.
+// Needs LifetimeEnergyGainedRegen, which is in Tesla's proto but not on their docs page.
+export function regenShare(store, from, to, netKwh) {
+  const a = store.valueAt('LifetimeEnergyGainedRegen', from);
+  const b = store.valueAt('LifetimeEnergyGainedRegen', to);
+  if (typeof a !== 'number' || typeof b !== 'number' || b < a) return { regen_kwh: null, regen_share: null };
+  const regen = b - a;
+  return { regen_kwh: regen, regen_share: netKwh > 0 ? regen / (netKwh + regen) : null };
 }
 
 function weeklySeries(trips) {

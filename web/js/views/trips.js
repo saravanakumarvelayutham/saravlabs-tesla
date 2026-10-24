@@ -64,6 +64,7 @@ export async function tripsView(state) {
   const delta = tw.wh_per_mile && lw.wh_per_mile ? ((tw.wh_per_mile - lw.wh_per_mile) / lw.wh_per_mile) * 100 : null;
   const pts = week.weekly.filter((w) => w.outside_c != null).map((w) => [w.outside_c * 9 / 5 + 32, w.wh_per_mile]);
   const regenSig = state.signals.LifetimeEnergyGainedRegen;
+  const share = tw.regen_share;
   return `
     <div class="head">
       <div class="stack" style="gap:6px"><div class="k">Trips</div><h1>${latest ? `${tripName(latest)} · ${day(latest.start_ts)}` : 'No trips yet'}</h1></div>
@@ -72,8 +73,11 @@ export async function tripsView(state) {
     ${latest ? tripCard(latest, state, false) : ''}
     <div class="grid2">
       <div class="pn" style="align-items:center;justify-content:center">
-        ${regenSig ? `<svg width="110" height="110" viewBox="0 0 110 110" role="img" aria-label="Lifetime regen energy">${ring({ cx: 55, cy: 55, r: 44, frac: 0.15, color: 'var(--green)' })}<text x="55" y="62" fill="var(--text)" font-size="20" font-weight="700" text-anchor="middle">${num(regenSig.value, 0)}</text></svg>
-          <div class="k center">Regen kWh, lifetime</div>`
+        ${share != null ? `<svg width="110" height="110" viewBox="0 0 110 110" role="img" aria-label="Regen recovered ${num(share * 100)} percent of energy used this week">${ring({ cx: 55, cy: 55, r: 44, frac: share, color: 'var(--green)' })}<text x="55" y="62" fill="var(--text)" font-size="22" font-weight="700" text-anchor="middle">${num(share * 100)}%</text></svg>
+          <div class="k center">Regen recovered this week</div>
+          <div class="t center">${num(tw.regen_kwh, 1)} kWh back of ${num(tw.kwh + tw.regen_kwh, 1)} kWh used · ${num(regenSig?.value, 0)} kWh lifetime</div>`
+          : regenSig ? `<div class="k center">Regen recovered</div><div class="big center" style="font-size:28px">${num(regenSig.value, 0)} kWh</div>
+          <div class="t center">Lifetime total. A weekly share needs a reading from before this week and trips with energy data.</div>`
           : `<div class="k center">Regen recovered</div><div class="t center">No LifetimeEnergyGainedRegen data. It's in Tesla's proto but not on their docs page, so this shows once your Plaid sends it.</div>`}
         ${chips(['LifetimeEnergyGainedRegen'], state.signals)}
       </div>

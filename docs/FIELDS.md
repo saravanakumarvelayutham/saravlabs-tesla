@@ -23,6 +23,7 @@ Interval is `interval_seconds`: the car sends a field at most once per interval,
 | `DCChargingPower` | 10 s | kW | Documented | Kilowatts added during a DC session. |
 | `ACChargingEnergyIn` | 30 s | kWh | Documented | Energy from the charger in an AC session; ignore during DC. |
 | `DCChargingEnergyIn` | 30 s | kWh | Documented | Energy added in a session, measured at the battery; valid for AC and DC. |
+| `ChargerVoltage` | 10 s | V | Documented | RMS of the AC charger's input voltage. Changes often even when not charging, so Tesla recommends a minimum delta. AC only. minimum_delta 1. |
 | `TimeToFullCharge` | 60 s | h | Documented | Hours until charging is complete (to ChargeLimitSoc). |
 | `FastChargerType` | 1 s | — | Documented | Enum FastCharger. |
 | `ChargePortDoorOpen` | 1 s | — | Documented | Boolean. |

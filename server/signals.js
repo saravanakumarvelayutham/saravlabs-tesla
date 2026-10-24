@@ -23,6 +23,7 @@ export const SIGNALS = {
   DCChargingPower: { interval: 10, unit: 'kW', doc: 'Kilowatts added during a DC session.' },
   ACChargingEnergyIn: { interval: 30, unit: 'kWh', doc: 'Energy from the charger in an AC session; ignore during DC.' },
   DCChargingEnergyIn: { interval: 30, unit: 'kWh', doc: 'Energy added in a session, measured at the battery; valid for AC and DC.' },
+  ChargerVoltage: { interval: 10, minimumDelta: 1, unit: 'V', doc: "RMS of the AC charger's input voltage. Changes often even when not charging, so Tesla recommends a minimum delta. AC only." },
   TimeToFullCharge: { interval: 60, unit: 'h', doc: 'Hours until charging is complete (to ChargeLimitSoc).' },
   FastChargerType: { interval: 1, doc: 'Enum FastCharger.' },
   ChargePortDoorOpen: { interval: 1, doc: 'Boolean.' },
