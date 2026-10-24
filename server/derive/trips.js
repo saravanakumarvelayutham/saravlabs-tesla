@@ -6,6 +6,7 @@
 // Odometer and EnergyRemaining stream at 60 s intervals, so their final values can arrive up to a
 // minute after the car is parked. A trip stays open for late values for FINALIZE_MS after Park.
 import { isParked, median, placeName } from '../util.js';
+import { regenFor } from './regen.js';
 
 const FINALIZE_MS = 90_000;
 const MAX_ROUTE_POINTS = 3000;
@@ -95,7 +96,14 @@ export class Trips {
 
   get(id) {
     const row = this.db.prepare('SELECT * FROM trips WHERE id = ?').get(id);
-    return row ? { ...summarize(row), route: JSON.parse(row.route || '[]'), segments: this.segments(row) } : null;
+    if (!row) return null;
+    const t = summarize(row);
+    return { ...t, ...this.regen(t), route: JSON.parse(row.route || '[]'), segments: this.segments(row) };
+  }
+
+  // Regen for one finished trip (see regen.js), waiting out the finalize window for late readings.
+  regen(t) {
+    return regenFor(this.store, t.start_ts, (t.end_ts || Date.now()) + FINALIZE_MS, t.kwh);
   }
 
   // Efficiency per stretch of the trip, from consecutive EnergyRemaining samples and the
@@ -116,13 +124,19 @@ export class Trips {
       for (const h of odo) { if (h.ts <= ts) v = h.value; else break; }
       return v;
     };
+    // GradeEstimatePercent (proto field 264, firmware 2026.32+, not on Tesla's docs page): mean per stretch.
+    const grade = this.store.history('GradeEstimatePercent', t.start_ts, 20000).filter((h) => h.ts <= to && typeof h.value === 'number');
+    const gradeIn = (from, until) => {
+      const g = grade.filter((h) => h.ts > from && h.ts <= until);
+      return g.length ? g.reduce((sum, h) => sum + h.value, 0) / g.length : null;
+    };
     const out = [];
     for (let i = 1; i < energy.length; i++) {
       const a = energy[i - 1];
       const b = energy[i];
       const miles = (odoAt(b.ts) ?? 0) - (odoAt(a.ts) ?? 0);
       if (miles < 0.05) continue;
-      out.push({ from: a.ts, to: b.ts, wh_per_mile: ((a.value - b.value) * 1000) / miles });
+      out.push({ from: a.ts, to: b.ts, miles, wh_per_mile: ((a.value - b.value) * 1000) / miles, grade_pct: gradeIn(a.ts, b.ts) });
     }
     return out;
   }

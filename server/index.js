@@ -44,7 +44,8 @@ function main() {
   const { store, config: cfg } = app;
 
   if (cfg.sampleMode) {
-    const sample = new Sample(store);
+    // SAMPLE_REGEN_COUNTER=0 simulates a car that never sends LifetimeEnergyGainedRegen.
+    const sample = new Sample(store, { regenCounter: process.env.SAMPLE_REGEN_COUNTER !== '0' });
     const hasData = app.db.prepare('SELECT COUNT(*) AS n FROM history').get().n > 0;
     if (!hasData) {
       console.log('[sample] writing simulated history…');
