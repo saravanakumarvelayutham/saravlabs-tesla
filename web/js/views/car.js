@@ -2,7 +2,7 @@
 // The page switches between them by itself when Gear leaves or returns to P.
 import { sig, useData } from '../core.js';
 import { arc, carTop, chips, esc, money, num, sampleBadge } from '../ui.js';
-import { commandButtons, liveLine } from './home.js';
+import { liveLine } from './home.js';
 import { regenFields } from './trips.js';
 
 // Month charging money for the parked view: home + Supercharger with cost per mile when the
@@ -43,7 +43,6 @@ export async function carParkedView(state) {
           <text class="m" x="130" y="232" fill="var(--muted)" font-size="11" text-anchor="middle" letter-spacing="1.4">LIMIT ${num(sig('ChargeLimitSoc'))}% · ${esc((cs === 'Disconnected' ? 'Unplugged' : cs || '—').toUpperCase())}</text>
         </svg>
         ${chips(['Soc', 'RatedRange', 'ChargeLimitSoc'], state.signals)}
-        <div style="width:100%;margin-top:auto">${commandButtons(state, { big: true })}</div>
       </div>
       <div class="pn" style="padding:10px;align-items:center;justify-content:center">
         ${carTop(state.signals, { scale: 1, leaks: (tires?.leaks || []).map((l) => l.tire) })}

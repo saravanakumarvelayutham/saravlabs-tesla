@@ -66,15 +66,6 @@ CREATE TABLE IF NOT EXISTS kv (
   k TEXT PRIMARY KEY,
   v TEXT
 );
-CREATE TABLE IF NOT EXISTS bridge_queue (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  ts INTEGER NOT NULL,
-  command TEXT NOT NULL,
-  args TEXT,
-  status TEXT NOT NULL DEFAULT 'queued',
-  result TEXT,
-  done_ts INTEGER
-);
 `;
 
 export function openDb(file) {

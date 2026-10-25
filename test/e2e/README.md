@@ -27,7 +27,6 @@ Caddy isn't started: it needs a public domain to get a certificate.
 
 ## What only the real car can show
 
-- The signed command handshake: the proxy does reach Fleet API's `signed_command`, but completing a session needs the car's key.
 - Which value type the car picks for each field (the test sends doubles, floats, ints and enums as `vehicle_data.proto` allows), and which fields a Plaid actually populates.
 - Tesla accepting the telemetry config JWS and the car connecting with it; the test checks the JWS header, claims and that `iss` is the virtual public key, but not the signature itself (Tesla's Schnorr scheme lives in vehicle-command's internal package).
 - Delivery from Apple's or Google's push service to a phone.

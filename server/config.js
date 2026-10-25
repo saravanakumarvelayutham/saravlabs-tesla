@@ -44,10 +44,10 @@ export const config = {
     clientSecret: env.TESLA_CLIENT_SECRET || '',
     redirectUri: env.TESLA_REDIRECT_URI || `${publicUrl}/auth/callback`,
     audience: env.TESLA_AUDIENCE || 'https://fleet-api.prd.na.vn.cloud.tesla.com',
-    scopes: env.TESLA_SCOPES || 'openid offline_access vehicle_device_data vehicle_location vehicle_cmds vehicle_charging_cmds',
+    scopes: env.TESLA_SCOPES || 'openid offline_access vehicle_device_data vehicle_location vehicle_charging_cmds',
     authorizeUrl: 'https://auth.tesla.com/oauth2/v3/authorize',
     tokenUrl: 'https://fleet-auth.prd.vn.cloud.tesla.com/oauth2/v3/token',
-    // tesla-http-proxy signs commands with the virtual key and forwards the rest to Fleet API.
+    // tesla-http-proxy signs fleet_telemetry_config with the virtual key and forwards the rest to Fleet API.
     proxyUrl: (env.TESLA_PROXY_URL || 'https://localhost:4443').replace(/\/$/, ''),
     proxyCaFile: env.TESLA_PROXY_CA_FILE || '',
     publicKeyFile: env.TESLA_PUBLIC_KEY_FILE || '',

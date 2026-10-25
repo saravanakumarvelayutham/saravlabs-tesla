@@ -1,5 +1,5 @@
-// Phone · Car tab: live status, car wireframe, energy, signal stream, insights, commands.
-import { sig, isDriving, useData } from '../core.js';
+// Phone · Car tab: live status, car wireframe, energy, signal stream, insights.
+import { sig, useData } from '../core.js';
 import { ago, carTop, chips, clock, esc, fmtValue, icon, num, sampleBadge, temp } from '../ui.js';
 
 export function liveLine(state) {
@@ -55,7 +55,7 @@ function insights(state) {
     items.push(['#/health', 'clock', 'var(--cyan)', `Sentry nights use ${drain.sentry_avg.toFixed(1)}% overnight`, `Average of ${sentryNights.length} nights${ratio}`]);
   }
   const upd = sig('SoftwareUpdateVersion');
-  if (upd) items.push(['#/updates', 'download', 'var(--cyan)', `Software update ${esc(upd)} is ready`, 'Release notes · install from the button below']);
+  if (upd) items.push(['#/updates', 'download', 'var(--cyan)', `Software update ${esc(upd)} is ready`, 'Release notes · install from the car or the Tesla app']);
   // Leaks and updates already have their own line above, so skip their events here.
   const shown = new Set(['tire_leak', ...(upd ? ['software_update'] : [])]);
   for (const ev of state.events.filter((e) => !shown.has(e.kind)).slice(0, 2)) items.push(['#/', 'pulse', 'var(--violet)', esc(ev.title), `${esc(ev.body || '')} · ${ago(ev.ts)}`]);
@@ -80,31 +80,7 @@ function logLinks(state) {
   </div>`;
 }
 
-export function commandButtons(state, { big = false } = {}) {
-  if (isDriving()) return '<div class="t center">Controls are hidden while driving.</div>';
-  const locked = sig('Locked');
-  const climateOn = ['HvacPowerStateOn', 'HvacPowerStatePrecondition'].includes(sig('HvacPower'));
-  const limit = sig('ChargeLimitSoc');
-  const nextLimit = limit === 90 ? 80 : 90;
-  const sentry = typeof sig('SentryMode') === 'string' && !/Off|Unknown/.test(sig('SentryMode'));
-  const upd = sig('SoftwareUpdateVersion');
-  const buttons = [
-    locked === false
-      ? { cmd: 'door_lock', label: 'Lock', ic: 'lock' }
-      : { cmd: 'door_unlock', label: 'Unlock', ic: 'unlock', confirm: 'Unlock the car?' },
-    { cmd: climateOn ? 'auto_conditioning_stop' : 'auto_conditioning_start', label: climateOn ? 'Climate off' : 'Climate', ic: 'fan', on: climateOn },
-    { cmd: 'set_charge_limit', args: { percent: nextLimit }, label: `Limit ${nextLimit}%`, ic: 'bolt' },
-    upd
-      ? { cmd: 'schedule_software_update', args: { offset_sec: 0 }, label: 'Update', ic: 'download', confirm: `Install ${upd} now? The car can't be driven during the install.` }
-      : { cmd: 'set_sentry_mode', args: { on: !sentry }, label: sentry ? 'Sentry off' : 'Sentry', ic: 'eye', on: sentry },
-  ];
-  const attrs = (b) => `type="button" data-cmd="${b.cmd}" data-label="${esc(b.label)}"${b.args ? ` data-args='${JSON.stringify(b.args)}'` : ''}${b.confirm ? ` data-confirm="${esc(b.confirm)}"` : ''}`;
-  if (big) return `<div class="row" style="gap:12px">${buttons.slice(0, 3).map((b) => `<button class="bigbtn" ${attrs(b)}>${esc(b.label)}</button>`).join('')}</div>`;
-  return `<div class="cmds">${buttons.map((b) => `<div class="cmd-wrap"><button class="cmd${b.on ? ' on' : ''}" ${attrs(b)} aria-label="${esc(b.label)}">${icon(b.ic)}</button><span class="k">${esc(b.label)}</span></div>`).join('')}</div>`;
-}
-
 export function homeView(state) {
-  const via = state.meta.bridge?.car_in_range ? 'Bluetooth via the garage Pi' : 'Fleet API';
   const tires = useData('tires', '/api/health/tires', 5 * 60_000);
   return `
     <div class="head">
@@ -123,6 +99,5 @@ export function homeView(state) {
     ${streamPanel(state)}
     ${insights(state)}
     ${logLinks(state)}
-    ${commandButtons(state)}
-    <div class="t center">Commands go over ${via}, signed with your virtual key${state.meta.sample_mode ? ' · sample mode: nothing is sent to a car' : ''}. Cabin ${temp(sig('InsideTemp'), true)}.</div>`;
+    <div class="t center">Cabin ${temp(sig('InsideTemp'), true)}.</div>`;
 }

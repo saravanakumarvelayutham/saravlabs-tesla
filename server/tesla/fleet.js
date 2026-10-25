@@ -1,5 +1,5 @@
-// Fleet API access, always through tesla-http-proxy (vehicle-command). The proxy signs commands
-// and fleet_telemetry_config with the virtual key and forwards everything else to Fleet API.
+// Fleet API access, always through tesla-http-proxy (vehicle-command). The proxy signs
+// fleet_telemetry_config with the virtual key and forwards everything else to Fleet API.
 // It only serves TLS, so we pass its certificate as the CA when it is self-signed.
 import fs from 'node:fs';
 import https from 'node:https';
@@ -47,15 +47,6 @@ export class Fleet {
       if (payload) req.write(payload);
       req.end();
     });
-  }
-
-  command(name, args = {}) {
-    return this.request('POST', `/api/1/vehicles/${this.vin}/command/${name}`, args);
-  }
-
-  // Only ever called from an explicit user action: wakes are billed and cost the car sleep time.
-  wakeUp() {
-    return this.request('POST', `/api/1/vehicles/${this.vin}/wake_up`);
   }
 
   vehicles() {

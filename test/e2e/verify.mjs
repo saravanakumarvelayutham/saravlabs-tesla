@@ -387,27 +387,12 @@ await check('pwa', 'service worker shows the decrypted alert as a notification',
   return shown;
 });
 
-// ---------- 12. Commands through the proxy ----------
-await check('commands', 'a car command is signed by tesla-http-proxy and sent to Fleet API', async () => {
-  const before = (await fakesLog()).length;
-  const r = await api('/api/command/flash_lights', { method: 'POST', body: { via: 'fleet' } });
-  const seen = (await fakesLog()).slice(before).filter((e) => e.kind === 'vehicle_command');
-  expect(seen.some((e) => e.endpoint === 'signed_command' && e.vin === VIN), 'proxy did not call signed_command', { app: r.json, seen });
-  return { app_status: r.status, app_error: r.json?.error, at_fake_fleet_api: seen.map((e) => ({ endpoint: e.endpoint, body_bytes: e.body_bytes, auth: e.auth })) };
-});
-await check('commands', 'wake_up goes to Fleet API through the proxy', async () => {
-  const before = (await fakesLog()).length;
-  const r = await api('/api/command/wake_up', { method: 'POST', body: { via: 'fleet' } });
-  const seen = (await fakesLog()).slice(before).filter((e) => e.kind === 'vehicle_command' && e.endpoint === 'wake_up');
-  expect(seen.length === 1, 'wake_up not seen', r.json);
-  return { app_status: r.status, app_error: r.json?.error };
-});
-await check('commands', 'bad command arguments are refused before reaching the car', async () => {
-  const before = (await fakesLog()).length;
-  const r = await api('/api/command/set_charge_limit', { method: 'POST', body: { args: { percent: 120 }, via: 'fleet' } });
-  const after = (await fakesLog()).length;
-  expect(r.status === 400 && after === before, `status ${r.status}`, r.json);
-  return { status: r.status, error: r.json.error };
+// ---------- 12. No car commands ----------
+await check('no-commands', 'the app has no command endpoint and sent no command to Fleet API during the run', async () => {
+  const r = await api('/api/command/flash_lights', { method: 'POST', body: {} });
+  const sent = (await fakesLog()).filter((e) => e.kind === 'vehicle_command');
+  expect(r.status === 404 && sent.length === 0, `status ${r.status}, ${sent.length} commands at fake Fleet API`, sent);
+  return { status: r.status, commands_at_fleet_api: sent.length };
 });
 
 sseAbort.abort();

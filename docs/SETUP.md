@@ -12,7 +12,7 @@ The Docker stack in `deploy/` and the Pi bridge haven't been run against a real 
 | # | Item | Where it comes from | Goes in |
 |---|---|---|---|
 | 1 | A domain with two hostnames, e.g. `plaid.example.com` (dashboard) and `telemetry.example.com` (car connects here) | Your DNS, pointing at the server | `PUBLIC_URL`, `APP_DOMAIN`, `TELEMETRY_HOSTNAME` |
-| 2 | Tesla developer app: **client ID** and **client secret** | [developer.tesla.com](https://developer.tesla.com) → create app. Allowed origin `https://plaid.example.com`, redirect URI `https://plaid.example.com/auth/callback`. Choose "Authorization Code and Machine-to-Machine". Scopes: vehicle information, vehicle location, vehicle commands, vehicle charging management | `TESLA_CLIENT_ID`, `TESLA_CLIENT_SECRET` |
+| 2 | Tesla developer app: **client ID** and **client secret** | [developer.tesla.com](https://developer.tesla.com) → create app. Allowed origin `https://plaid.example.com`, redirect URI `https://plaid.example.com/auth/callback`. Choose "Authorization Code and Machine-to-Machine". Scopes: vehicle information, vehicle location, vehicle charging management. The app sends no commands, so leave vehicle commands off | `TESLA_CLIENT_ID`, `TESLA_CLIENT_SECRET` |
 | 3 | **Virtual key** (EC prime256v1 key pair) | Generate (below). The private key stays on the server | `deploy/config/proxy/fleet-key.pem` + `fleet-key-public.pem` |
 | 4 | **Proxy TLS certificate** for tesla-http-proxy | Generate (below), self-signed is fine; only the app talks to it | `deploy/config/proxy/tls-key.pem`, `tls-cert.pem` |
 | 5 | **Telemetry server certificate** for `telemetry.example.com`, plus its full CA chain | Any CA, e.g. Let's Encrypt via certbot | `deploy/config/telemetry/server-cert.pem`, `server-key.pem`, `ca.pem` |
@@ -91,4 +91,4 @@ Then open `https://tesla.com/_ak/plaid.example.com` on your phone. The Tesla app
 
 ## Costs to know about
 
-Fleet API is billed per request. The app never wakes the car by itself and reads data from Fleet Telemetry instead of polling `vehicle_data`. Commands go over Bluetooth when the Pi has reached the car in the last 2 minutes, and over Fleet API otherwise.
+Fleet API is billed per request. The app never wakes the car by itself and reads data from Fleet Telemetry instead of polling `vehicle_data`.
