@@ -11,6 +11,7 @@ services:
     env_file: ../.env
     environment:
       DATA_DIR: /data
+      TRUST_PROXY: "1"
       MQTT_URL: mqtt://mosquitto:1883
       TESLA_PROXY_URL: https://tesla-proxy:4443
       TESLA_PROXY_CA_FILE: /config/proxy/tls-cert.pem

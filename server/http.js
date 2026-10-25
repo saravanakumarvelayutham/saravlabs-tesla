@@ -66,7 +66,7 @@ export function createServer(app) {
     res.end(fs.readFileSync(f));
   }, { public: true });
   route('POST', '/api/login', async (req, res) => {
-    const ip = req.socket.remoteAddress;
+    const ip = clientIp(req, config.trustProxy);
     const a = loginAttempts.get(ip) || { n: 0, ts: Date.now() };
     if (Date.now() - a.ts > 15 * 60_000) { a.n = 0; a.ts = Date.now(); }
     if (a.n >= 10) return send(res, 429, { error: 'Too many attempts. Try again in 15 minutes.' });
@@ -411,6 +411,13 @@ async function readJson(req) {
 
 function cookies(req) {
   return Object.fromEntries((req.headers.cookie || '').split(';').map((c) => c.trim().split('=')).filter((p) => p.length >= 2).map(([k, ...v]) => [k, v.join('=')]));
+}
+
+// Behind Caddy every request arrives from Caddy's address, so the login limit would be shared by everyone.
+// Caddy ignores X-Forwarded-For from clients and sets it itself, so its last entry is the real client.
+function clientIp(req, trustProxy) {
+  const fwd = trustProxy ? String(req.headers['x-forwarded-for'] || '').split(',').pop().trim() : '';
+  return fwd || req.socket.remoteAddress;
 }
 
 function safeEqual(a, b) {
