@@ -59,9 +59,9 @@ sudo chmod 600 deploy/config/proxy/fleet-key.pem deploy/config/proxy/tls-key.pem
 If your DNS is on Cloudflare, `deploy/telemetry-cert.sh` does all of this with Let's Encrypt (DNS challenge, so Caddy keeps port 80). Put a Cloudflare API token with Zone:DNS:Edit in `/root/.secrets/cloudflare.ini` as `dns_cloudflare_api_token = ...` (mode 600), then:
 
 ```bash
-sudo deploy/telemetry-cert.sh telemetry.example.com you@example.com
+sudo deploy/telemetry-cert.sh telemetry.example.com
 # renew daily; it only restarts fleet-telemetry when the certificate changed
-echo "17 4 * * * root $PWD/deploy/telemetry-cert.sh telemetry.example.com you@example.com" | sudo tee /etc/cron.d/telemetry-cert
+echo "17 4 * * * root $PWD/deploy/telemetry-cert.sh telemetry.example.com" | sudo tee /etc/cron.d/telemetry-cert
 ```
 
 Both hostnames must be "DNS only" (grey cloud) in Cloudflare: the car authenticates with a TLS client certificate, which fleet-telemetry has to receive directly.
