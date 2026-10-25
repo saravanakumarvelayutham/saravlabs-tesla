@@ -41,6 +41,15 @@ export class Alerts {
         this.fire('software_update', 'Software update available', `Version ${value} is available.`, { version: value }, ts);
       }
     }
+    // Seen on a real car: false while the update downloads, true once the Tesla app offers Install.
+    if (field === 'SoftwareUpdateAvailable' && value === true) {
+      const version = st.get('SoftwareUpdateVersion') || '';
+      if (kvGet(this.db, 'notifiedUpdateReady') !== version) {
+        kvSet(this.db, 'notifiedUpdateReady', version);
+        this.fire('software_update_ready', 'Update ready to install',
+          `${version ? `Version ${version}` : 'The update'} is ready. Install it from the car or the Tesla app.`, { version: version || null }, ts);
+      }
+    }
     this.checkAway(ts);
   }
 

@@ -35,3 +35,10 @@ test('a software update is announced once per version', () => {
   feed(store, T0, [['SoftwareUpdateVersion', '2026.38.2', 0], ['SoftwareUpdateVersion', '2026.38.2', 60], ['SoftwareUpdateVersion', '2026.40.1', 120]]);
   assert.deepEqual(sent.map((m) => m.body), ['Version 2026.38.2 is available.', 'Version 2026.40.1 is available.']);
 });
+
+test('ready to install is announced once, when the car says so', () => {
+  const { store, sent } = setup();
+  feed(store, T0, [['SoftwareUpdateVersion', '2026.38.5.11', 0], ['SoftwareUpdateAvailable', false, 0], ['SoftwareUpdateAvailable', true, 50], ['SoftwareUpdateAvailable', true, 51]]);
+  assert.deepEqual(sent.map((m) => m.tag), ['software_update', 'software_update_ready']);
+  assert.equal(sent[1].body, 'Version 2026.38.5.11 is ready. Install it from the car or the Tesla app.');
+});
