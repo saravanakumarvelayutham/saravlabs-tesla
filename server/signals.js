@@ -112,7 +112,9 @@ export const SIGNALS = {
   SoftwareUpdateDownloadPercentComplete: { interval: 60, unit: '%', doc: 'Percent of the update downloaded.' },
   SoftwareUpdateInstallationPercentComplete: { interval: 60, unit: '%', doc: 'Percent of the update installed.' },
   SoftwareUpdateExpectedDurationMinutes: { interval: 3600, unit: 'min', doc: 'Estimated install time.' },
-  SoftwareUpdateAvailable: { interval: 60, minFirmware: '2026.32', unverified: true, doc: 'Proto field 266. Not on the Available Data page.' },
+  // Proto field 266, not on the Available Data page. On a 2026.38 Plaid it was false while the update
+  // downloaded and turned true when the Tesla app offered Install.
+  SoftwareUpdateAvailable: { interval: 60, minFirmware: '2026.32', doc: 'True once the update is ready to install.' },
   // In vehicle_data.proto (field 134, not marked Semi-only) but not listed on Tesla's
   // Available Data page. Streamed so we can see whether a Plaid populates it. 60 s like
   // Odometer, so the reading after Park lands inside a trip's finalize window.

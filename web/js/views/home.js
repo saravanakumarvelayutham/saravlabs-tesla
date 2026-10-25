@@ -57,7 +57,7 @@ function insights(state) {
   const upd = sig('SoftwareUpdateVersion');
   if (upd) items.push(['#/updates', 'download', 'var(--cyan)', `Software update ${esc(upd)} ${updateStage()}`, 'Release notes · install from the car or the Tesla app']);
   // Leaks and updates already have their own line above, so skip their events here.
-  const shown = new Set(['tire_leak', ...(upd ? ['software_update'] : [])]);
+  const shown = new Set(['tire_leak', ...(upd ? ['software_update', 'software_update_ready'] : [])]);
   for (const ev of state.events.filter((e) => !shown.has(e.kind)).slice(0, 2)) items.push(['#/', 'pulse', 'var(--violet)', esc(ev.title), `${esc(ev.body || '')} · ${ago(ev.ts)}`]);
   if (!items.length) return '';
   return `<div class="pn" style="gap:12px"><div class="k">Insights</div>

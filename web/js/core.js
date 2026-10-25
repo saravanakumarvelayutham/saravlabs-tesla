@@ -55,12 +55,14 @@ export function useData(key, path, maxAge = 60_000) {
 }
 
 export const sig = (f) => state.signals[f]?.value ?? null;
-// Where an available update is, from the car's own percentages. Tesla's download percent can restart
-// from 0 several times for one update, so it never claims the update is ready to install.
+// Where an available update is. "Ready" comes only from SoftwareUpdateAvailable: Tesla's download
+// percent can restart from 0 several times for one update, so 100% doesn't mean ready.
 export const updateStage = () => {
   const inst = sig('SoftwareUpdateInstallationPercentComplete');
   const dl = sig('SoftwareUpdateDownloadPercentComplete');
   if (typeof inst === 'number' && inst > 0) return `installing ${Math.round(inst)}%`;
+  if (sig('SoftwareUpdateAvailable') === true) return 'ready to install';
   if (typeof dl === 'number' && dl > 0 && dl < 100) return `downloading ${Math.round(dl)}%`;
+  if (sig('SoftwareUpdateAvailable') === false) return 'downloading';
   return 'available';
 };
