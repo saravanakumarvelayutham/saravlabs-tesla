@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # Gets or renews the Let's Encrypt certificate for the telemetry hostname and installs it for fleet-telemetry.
 #
-#   sudo deploy/telemetry-cert.sh telemetry.example.com you@example.com
+#   sudo deploy/telemetry-cert.sh telemetry.example.com [email]
+#
+# The email is optional. Let's Encrypt stopped sending expiry reminders on 2025-06-04 and now only adds
+# addresses to its mailing list (letsencrypt.org/2025/06/26/expiration-notification-service-has-ended).
 #
 # Uses a Cloudflare DNS challenge, so port 80 stays with Caddy. Needs a Cloudflare API token with
 # Zone:DNS:Edit in /root/.secrets/cloudflare.ini (override with CLOUDFLARE_INI), mode 600:
@@ -10,8 +13,8 @@
 # the certificate changed.
 set -euo pipefail
 
-HOST=${1:?usage: telemetry-cert.sh <telemetry hostname> <email>}
-EMAIL=${2:?usage: telemetry-cert.sh <telemetry hostname> <email>}
+HOST=${1:?usage: telemetry-cert.sh <telemetry hostname> [email]}
+EMAIL=${2:-}
 CREDS=${CLOUDFLARE_INI:-/root/.secrets/cloudflare.ini}
 DEPLOY=$(cd "$(dirname "$0")" && pwd)
 OUT=$DEPLOY/config/telemetry
@@ -20,8 +23,9 @@ LIVE=/etc/letsencrypt/live/$HOST
 [ -r "$CREDS" ] || { echo "Missing $CREDS (see the comment at the top of this script)." >&2; exit 1; }
 mkdir -p "$OUT"
 
+if [ -n "$EMAIL" ]; then account=(-m "$EMAIL"); else account=(--register-unsafely-without-email); fi
 docker run --rm -v /etc/letsencrypt:/etc/letsencrypt -v "$CREDS:/cloudflare.ini:ro" certbot/dns-cloudflare \
-  certonly --non-interactive --agree-tos -m "$EMAIL" --keep-until-expiring \
+  certonly --non-interactive --agree-tos "${account[@]}" --keep-until-expiring \
   --dns-cloudflare --dns-cloudflare-credentials /cloudflare.ini --dns-cloudflare-propagation-seconds 30 -d "$HOST"
 
 if cmp -s "$LIVE/fullchain.pem" "$OUT/server-cert.pem"; then
