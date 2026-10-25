@@ -53,6 +53,9 @@ export function createServer(app) {
   const authRequired = Boolean(config.appPasscode);
   const authed = (req) => !authRequired || validSession(cookies(req).plaid_session);
   const bridgeAuthed = (req) => config.bridgeToken && safeEqual(req.headers.authorization || '', `Bearer ${config.bridgeToken}`);
+  // READ_TOKEN only opens reads of the dashboard API: no POST, no Tesla sign-in routes, no bridge routes.
+  const readAuthed = (req, path) => req.method === 'GET' && path.startsWith('/api/') && Boolean(config.readToken)
+    && safeEqual(req.headers.authorization || '', `Bearer ${config.readToken}`);
 
   const routes = [];
   const route = (method, pattern, handler, opts = {}) => routes.push({ method, pattern, handler, ...opts });
@@ -211,7 +214,7 @@ export function createServer(app) {
         if (!m) continue;
         if (r.bridge) {
           if (!bridgeAuthed(req)) return send(res, 401, { error: 'bad bridge token' });
-        } else if (!r.public && !authed(req)) {
+        } else if (!r.public && !authed(req) && !readAuthed(req, url.pathname)) {
           return send(res, 401, { error: 'login required' });
         }
         const out = await r.handler(req, res, { query, params: m });
