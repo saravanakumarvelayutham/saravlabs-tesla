@@ -19,11 +19,12 @@ export async function setupView(state_) {
   const tc = m.tesla_linked ? await load('tcfg', '/api/tesla/telemetry-config', 60_000).catch((e) => ({ error: e.message })) : null;
   const hist = await load('hist', '/api/tesla/cache?what=charging_history', 60_000).catch(() => null);
   const b = m.bridge;
+  const fresh = Object.values(state_.signals).some((e) => Date.now() - (e.ts || 0) < 10 * 60_000);
   return `
     <div class="head"><div class="stack" style="gap:6px"><a class="k" href="#/">← Car</a><h1>Setup</h1></div></div>
     <div class="pn">
       <div class="k">Connections</div>
-      <div class="list-row"><span>Data</span>${m.sample_mode ? yes(false, 'Sample mode (simulated)') : yes(Boolean(m.telemetry?.status === 'CONNECTED'), `Fleet Telemetry ${m.telemetry?.status || 'no connection event yet'}`)}</div>
+      <div class="list-row"><span>Data</span>${m.sample_mode ? yes(false, 'Sample mode (simulated)') : m.telemetry ? yes(m.telemetry.status === 'CONNECTED', `Fleet Telemetry ${m.telemetry.status}`) : yes(fresh, fresh ? 'Fleet Telemetry receiving data' : 'Fleet Telemetry no data yet')}</div>
       <div class="list-row"><span>Tesla account</span>${yes(m.tesla_linked, m.tesla_linked ? 'Linked' : m.tesla_configured ? 'Not linked' : 'Client ID/secret not set')}</div>
       <div class="list-row"><span>Garage Pi</span>${yes(b.online, b.online ? (b.car_in_range ? 'Online · car in range' : 'Online · car not in range') : b.last_seen ? `Last seen ${ago(b.last_seen)}` : 'Never connected')}</div>
       <div class="list-row"><span>Notifications</span>${yes(push.enabled, push.enabled ? `${push.subscriptions} device(s)` : 'VAPID keys not set')}</div>
