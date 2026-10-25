@@ -108,6 +108,10 @@ export const SIGNALS = {
   VehicleName: { interval: 3600 },
   Version: { interval: 3600 },
   SoftwareUpdateVersion: { interval: 60, doc: 'Version of an available update.' },
+  // Tesla: download percent "will go from 0-100% multiple times" for one update, so 100 doesn't mean ready.
+  SoftwareUpdateDownloadPercentComplete: { interval: 60, unit: '%', doc: 'Percent of the update downloaded.' },
+  SoftwareUpdateInstallationPercentComplete: { interval: 60, unit: '%', doc: 'Percent of the update installed.' },
+  SoftwareUpdateExpectedDurationMinutes: { interval: 3600, unit: 'min', doc: 'Estimated install time.' },
   SoftwareUpdateAvailable: { interval: 60, minFirmware: '2026.32', unverified: true, doc: 'Proto field 266. Not on the Available Data page.' },
   // In vehicle_data.proto (field 134, not marked Semi-only) but not listed on Tesla's
   // Available Data page. Streamed so we can see whether a Plaid populates it. 60 s like

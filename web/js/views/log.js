@@ -1,6 +1,6 @@
 // Software (release notes) and Alerts screens. Both read Fleet API data the server cached; nothing
 // here calls Tesla until the Fetch button is pressed, and the car is never woken for it.
-import { actions, api, load, render, state, toast } from '../core.js';
+import { actions, api, load, render, state, toast, updateStage } from '../core.js';
 import { ago, chips, clock, dateTime, esc, icon, sampleBadge } from '../ui.js';
 
 const head = (title, meta) => `<div class="head"><div class="stack" style="gap:6px"><a class="k" href="#/">← Car</a><h1>${title}</h1></div>${sampleBadge(meta)}</div>`;
@@ -28,7 +28,7 @@ export async function releaseNotesView(st) {
   const d = await load('relnotes', '/api/vehicle/release-notes', 60_000);
   const update = d.update
     ? `<div class="update">
-        <div class="row"><div class="stack"><span class="k amber">Update ready</span><span class="mono" style="font-size:22px;font-weight:700">${esc(d.update)}</span></div>${icon('download', 28, 'var(--amber)')}</div>
+        <div class="row"><div class="stack"><span class="k amber">Update ${esc(updateStage())}</span><span class="mono" style="font-size:22px;font-weight:700">${esc(d.update)}</span></div>${icon('download', 28, 'var(--amber)')}</div>
         <div class="t">Install it from the car's screen or the Tesla app when parked. These notes are the ones Tesla returns for the car. Whether they describe the installed version or the waiting update isn't documented, so check the version on each note.</div>
       </div>`
     : '';
@@ -47,7 +47,7 @@ export async function releaseNotesView(st) {
       <div class="k">Installed</div>
       <div class="big glow cyan mono" style="font-size:40px">${esc(d.version || '—')}</div>
       ${update}
-      ${chips(['Version', 'SoftwareUpdateVersion'], st.signals)}
+      ${chips(['Version', 'SoftwareUpdateVersion', 'SoftwareUpdateDownloadPercentComplete'], st.signals)}
     </div>
     <div class="pn" style="gap:10px">
       <div class="k">Release notes${d.notes.length ? ` · ${d.notes.length}` : ''}</div>

@@ -38,7 +38,7 @@ export class Alerts {
       const last = kvGet(this.db, 'notifiedUpdate');
       if (last !== value) {
         kvSet(this.db, 'notifiedUpdate', value);
-        this.fire('software_update', 'Software update ready', `Version ${value} is available.`, { version: value }, ts);
+        this.fire('software_update', 'Software update available', `Version ${value} is available.`, { version: value }, ts);
       }
     }
     this.checkAway(ts);

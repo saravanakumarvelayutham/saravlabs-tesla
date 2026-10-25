@@ -339,7 +339,7 @@ await check('derive', 'drive stats endpoint answers after the drive', async () =
 });
 
 // ---------- 11. Alerts -> web push ----------
-const WANT_ALERTS = { charge_complete: 'Charging complete', sentry_alarm: 'Sentry alarm', tpms_hard: 'Tire pressure warning', software_update: 'Software update ready' };
+const WANT_ALERTS = { charge_complete: 'Charging complete', sentry_alarm: 'Sentry alarm', tpms_hard: 'Tire pressure warning', software_update: 'Software update available' };
 await check('alerts', 'alert rules fired for charge complete, Sentry alarm, tire warning and update', async () => {
   const ev = (await api('/api/events')).json;
   const kinds = ev.map((e) => e.kind);
