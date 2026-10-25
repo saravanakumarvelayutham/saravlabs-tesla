@@ -363,8 +363,10 @@ function serveStatic(root, pathname, res) {
   const target = fs.existsSync(file) && fs.statSync(file).isFile() ? file : path.join(root, 'index.html');
   const ext = path.extname(target);
   const headers = { 'Content-Type': MIME[ext] || 'application/octet-stream' };
-  // The service worker and HTML must revalidate so updates reach installed apps.
-  headers['Cache-Control'] = ext === '.html' || target.endsWith('sw.js') ? 'no-cache' : 'public, max-age=3600';
+  // App code has stable URLs, so revalidate it instead of mixing releases for an hour.
+  // Large models and vendor assets retain their normal browser cache.
+  const appCode = ext === '.html' || target.endsWith('sw.js') || rel.startsWith('/js/') || rel.startsWith('/css/');
+  headers['Cache-Control'] = appCode ? 'no-cache' : 'public, max-age=3600';
   res.writeHead(200, headers);
   fs.createReadStream(target).pipe(res);
 }

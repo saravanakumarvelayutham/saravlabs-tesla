@@ -10,7 +10,7 @@ actions['insight-evidence'] = (el) => {
   if (expanded.has(key)) expanded.delete(key); else expanded.add(key);
   render();
 };
-const evidence = (key, text) => `<details class="intel-method" ${expanded.has(key) ? 'open' : ''}><summary data-action="insight-evidence" data-insight="${key}">Evidence &amp; calculation</summary><p class="intel-evidence">${text}</p></details>`;
+const evidence = (key, text) => `<details class="intel-method" ${expanded.has(key) ? 'open' : ''}><summary data-action="insight-evidence" data-insight="${key}" data-fk="evidence-${key}">Evidence &amp; calculation</summary><p class="intel-evidence">${text}</p></details>`;
 const metric = (value, unit) => `<div class="intel-metric">${value}<span>${unit}</span></div>`;
 const waiting = (text) => `<div class="intel-wait">${text}</div>`;
 const shell = (cls, body) => `<article class="pn intel-card ${cls}">${body}</article>`;

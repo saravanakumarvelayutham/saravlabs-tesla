@@ -1,33 +1,28 @@
 // App shell: data loading, live stream, routing.
-import { esc, icon, prefs } from './ui.js';
+import { esc, prefs } from './ui.js';
 import { state, api, toast, actions, setRender } from './core.js';
 import { homeView } from './views/home.js';
 import { chargeView } from './views/charge.js';
 import { tripsView, tripView } from './views/trips.js';
 import { batteryView, tiresView } from './views/health.js';
 import { driveView } from './views/drive.js';
-import { carParkedView, carDrivingView } from './views/car.js';
+import { carDrivingView } from './views/car.js';
 import { setupView, loginView } from './views/setup.js';
 import { releaseNotesView, alertsView } from './views/log.js';
 import { signalSheet, sheetSignal } from './views/signal.js';
 import { mountCar3d } from './car3d.js';
+import { overviewGraphics } from './views/overview.js';
+import { chapterFor, chapterLinks, experienceView } from './experience.js';
 
 const root = document.getElementById('app');
 const dock = document.getElementById('dock');
+actions['chapter-data'] = () => root.querySelector('#chapter-data')?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' });
 
 const isWide = () => window.innerWidth >= 1000 || new URLSearchParams(location.search).get('view') === 'car';
 const driving = () => {
   const g = state.signals.Gear?.value;
   return g === 'ShiftStateD' || g === 'ShiftStateR' || g === 'ShiftStateN';
 };
-
-const TABS = [
-  ['#/', 'car', 'Car'],
-  ['#/charge', 'bolt', 'Charge'],
-  ['#/trips', 'route', 'Trips'],
-  ['#/health', 'pulse', 'Health'],
-  ['#/drive', 'gauge', 'Drive'],
-];
 
 function route() {
   const h = location.hash || '#/';
@@ -36,14 +31,19 @@ function route() {
 }
 
 let renderQueued = false;
+let renderGeneration = 0;
+let previousChapter = null;
 function render() {
+  ++renderGeneration;
   if (renderQueued) return;
   renderQueued = true;
   requestAnimationFrame(async () => {
     renderQueued = false;
+    const generation = renderGeneration;
     document.body.classList.toggle('hide-src', !prefs.sources);
     if (state.needLogin) {
       document.body.classList.remove('wide');
+      document.body.classList.remove('immersive', 'glance-mode');
       dock.hidden = true;
       root.innerHTML = loginView();
       return;
@@ -51,12 +51,16 @@ function render() {
     if (!state.meta) return;
     const { path, id } = route();
     const wide = isWide();
+    const glance = wide && path === '' && driving();
     document.body.classList.toggle('wide', wide);
-    dock.hidden = wide;
+    document.body.classList.add('immersive');
+    document.body.classList.toggle('glance-mode', glance);
+    dock.hidden = wide || glance;
     let html;
     try {
-      if (wide && path === '') html = driving() ? carDrivingView(state) : await carParkedView(state);
+      if (glance) html = carDrivingView(state);
       else if (path === '') html = homeView(state);
+      else if (path === 'insights') html = overviewGraphics(state);
       else if (path === 'charge') html = await chargeView(state);
       else if (path === 'trips') html = id ? await tripView(state, id) : await tripsView(state);
       else if (path === 'health') html = id === 'tires' ? await tiresView(state) : await batteryView(state);
@@ -69,26 +73,32 @@ function render() {
       if (err.message === 'login required') return;
       html = `<div class="pn"><div class="k">Error</div><div>${esc(err.message)}</div></div>`;
     }
-    if (wide && path !== '') html = `<div class="car-nav"><a href="#/">← Dashboard</a></div>${html}`;
+    // A slower fetch from the previous route must never overwrite the new chapter.
+    if (generation !== renderGeneration) return;
+    if (!glance) html = experienceView(html, state, path);
     if (state.sheet) html += signalSheet(state);
     document.body.classList.toggle('sheet-open', Boolean(state.sheet));
-    // Live renders replace the DOM; keep keyboard focus on the same control inside the sheet.
+    // Live renders replace the DOM; preserve focus in signal sheets and the vehicle studio.
     const focusKey = document.activeElement?.dataset?.fk;
     const sheetScroll = root.querySelector('.sheet')?.scrollTop || 0;
     const scroll = window.scrollY;
     root.innerHTML = html;
-    mountCar3d(root, { signals: state.signals, leaks: (state.cache.tires?.data?.leaks || []).map((l) => l.tire), paint: prefs.paint, targetPsi: state.meta.tire_target_psi });
+    mountCar3d(root, { signals: state.signals, leaks: (state.cache.tires?.data?.leaks || []).map((l) => l.tire), paint: prefs.paint, targetPsi: state.meta.tire_target_psi, mode: chapterFor(path)?.mode || 'vehicle' });
+    if (previousChapter !== path) {
+      previousChapter = path;
+      document.title = `Plaid / ${chapterFor(path)?.label || ({ setup: 'Setup', alerts: 'Alerts', updates: 'Software' }[path] || 'Vehicle')}`;
+      if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) root.querySelector('.world-heading, .aux-heading')?.animate([{ opacity: 0, transform: 'translateY(12px)' }, { opacity: 1, transform: 'translateY(0)' }], { duration: 420, easing: 'ease-out' });
+    }
     window.scrollTo(0, scroll);
     const sheet = root.querySelector('.sheet');
     if (sheet) {
       sheet.scrollTop = sheetScroll;
       (root.querySelector(`[data-fk="${focusKey}"]`) || (focusKey ? null : sheet.querySelector('.sheet-x')))?.focus({ preventScroll: true });
+    } else if (focusKey) root.querySelector(`[data-fk="${focusKey}"]`)?.focus({ preventScroll: true });
+    if (dock.dataset.chapter !== path) {
+      dock.innerHTML = chapterLinks(path, true);
+      dock.dataset.chapter = path;
     }
-    const active = path || '';
-    dock.innerHTML = TABS.map(([href, ic, label]) => {
-      const on = (href === '#/' && active === '') || (href !== '#/' && href.slice(2) === active);
-      return `<a class="tab${on ? ' on' : ''}" href="${href}"${on ? ' aria-current="page"' : ''}>${icon(ic, 20)}${label}</a>`;
-    }).join('');
   });
 }
 

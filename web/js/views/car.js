@@ -1,11 +1,7 @@
-// Car browser views. Parked: full-screen three-column dashboard. Driving: glance view, no controls.
+// Car browser views. Parked: vehicle studio and telemetry. Driving: glance view, no controls.
 // The page switches between them by itself when Gear leaves or returns to P.
-import { sig, useData } from '../core.js';
-import { arc, chips, esc, money, num, psi, sampleBadge, temp } from '../ui.js';
-import { car3dSlot } from '../car3d.js';
-import { carStatus, liveLine, insights, intelligenceHeader, vehicleStageHeader } from './home.js';
-import { regenFields } from './trips.js';
-import { overviewGraphics } from './overview.js';
+import { sig } from '../core.js';
+import { chips, esc, money, num, sampleBadge } from '../ui.js';
 
 // Month charging money for the parked view: home + Supercharger with cost per mile when the
 // server can price both, else home cost alone, else kWh.
@@ -19,69 +15,6 @@ export function monthMoney(m, currency) {
   const why = `Cost per mile needs ${m.missing?.length ? m.missing.join(' and ') : 'home and Supercharger cost'}.`;
   if (m.home?.cost != null) return { label: `Home charging, ${month}`, value: money(m.home.cost, currency), perMile: '—', note: why };
   return { label: `${month} charging`, value: `${num((m.home?.kwh || 0) + (m.dc?.kwh || 0))} kWh`, perMile: '—', note: why };
-}
-
-// Four tyre pressures laid out like the car, low ones in amber.
-function tireGrid(state, tires) {
-  const leaks = (tires?.leaks || []).map((l) => l.tire);
-  const target = state.meta.tire_target_psi;
-  const cell = (k) => {
-    const p = psi(sig(`TpmsPressure${k}`));
-    const low = leaks.includes(k.toUpperCase()) || (target && p != null && p < target - 3);
-    return `<div class="tire-cell${low ? ' amber' : ''}"><span class="fv">${num(p)}</span><span class="fl">${k.toUpperCase()} · psi</span></div>`;
-  };
-  return `<div class="tires">${cell('Fl')}${cell('Fr')}${cell('Rl')}${cell('Rr')}</div>
-    <div class="t" style="align-self:flex-start">${target ? `Target ${target} psi · ` : ''}<a href="#/health/tires">Tire history</a></div>`;
-}
-
-export async function carParkedView(state) {
-  const trips = useData('trips', '/api/trips?limit=60', 120_000);
-  const charging = useData('charging', '/api/charging', 120_000);
-  const drain = useData('drain', '/api/health/drain', 600_000);
-  const tires = useData('tires', '/api/health/tires', 600_000);
-  const soc = sig('Soc');
-  const cs = (sig('DetailedChargeState') || '').replace('DetailedChargeState', '');
-  const tw = trips?.week?.this_week;
-  const mm = monthMoney(charging?.month, state.meta.currency);
-  return `
-    ${intelligenceHeader()}
-    <div class="car-top">
-      <div class="row" style="gap:18px;justify-content:flex-start"><h1 class="car-name">${esc(sig('VehicleName') || 'My Plaid')}</h1><span class="status">${esc(carStatus())}</span>${liveLine(state)}</div>
-      <div class="row" style="gap:12px"><nav class="car-nav" aria-label="Screens"><a href="#/charge">Charge</a><a href="#/trips">Trips</a><a href="#/health">Health</a><a href="#/drive">Drive</a></nav>${sampleBadge(state.meta)}</div>
-    </div>
-    <div class="car">
-      <div class="pn" style="align-items:center">
-        <div class="k" style="align-self:flex-start">Energy</div>
-        <svg class="chart" viewBox="0 0 260 240" style="max-width:260px" role="img" aria-label="Battery ${num(soc)} percent, ${num(sig('RatedRange'))} miles rated">
-          ${arc({ cx: 130, cy: 125, r: 100, frac: (soc || 0) / 100, width: 10, id: 'pe' })}
-          <text x="130" y="140" fill="var(--text)" font-size="72" font-weight="600" text-anchor="middle" letter-spacing="-2">${num(soc)}%</text>
-          <text x="130" y="170" fill="var(--text-2)" font-size="17" text-anchor="middle">${num(sig('RatedRange'))} mi rated</text>
-          <text x="130" y="232" fill="var(--muted)" font-size="14" text-anchor="middle">Limit ${num(sig('ChargeLimitSoc'))}% · ${esc(cs === 'Disconnected' ? 'Unplugged' : cs || '—')}</text>
-        </svg>
-        ${chips(['Soc', 'RatedRange', 'ChargeLimitSoc'], state.signals)}
-        <div class="k" style="align-self:flex-start;margin-top:18px">Tires</div>
-        ${tireGrid(state, tires)}
-      </div>
-      <div class="pn car-hero">
-        ${vehicleStageHeader()}
-        ${car3dSlot(state.signals, (tires?.leaks || []).map((l) => l.tire), 'fill')}
-        <div class="row car-hero-foot"><span>Inside ${temp(sig('InsideTemp'))} · Outside ${temp(sig('OutsideTemp'))}</span><span>${num(sig('Odometer'))} mi</span></div>
-        ${chips(['DoorState', 'TpmsPressureFl', 'InsideTemp', 'OutsideTemp', 'Locked', 'FdWindow', 'SentryMode'], state.signals)}
-        ${insights(state)}
-      </div>
-      <div class="pn">
-        <div class="k">This week</div>
-        <div class="row" style="justify-content:flex-start;gap:10px;align-items:baseline"><span class="big" style="font-size:56px">${num(tw?.wh_per_mile)}</span><span class="k">Wh/mi</span></div>
-        <div class="kv"><span>Driven</span><span class="mono">${num(tw?.miles)} MI</span></div>
-        <div class="kv"><span>Trips</span><span class="mono">${num(tw?.trips)}</span></div>
-        <div class="kv"><span>Regen back</span><span class="mono green" title="${tw?.regen_source === 'pack_power' ? 'Estimated from pack voltage × current' : 'From LifetimeEnergyGainedRegen'}">${tw?.regen_share != null ? `${num(tw.regen_share * 100)}%${tw.regen_source === 'pack_power' ? ' EST' : ''}` : '—'}</span></div>
-        <div class="kv"><span>${esc(mm.label)}</span><span class="mono">${mm.value}</span></div>
-        <div class="kv"><span>Per mile</span><span class="mono">${mm.perMile}</span></div>
-        <div class="kv"><span>Sentry drain</span><span class="mono amber">${drain?.sentry_avg != null ? `${drain.sentry_avg.toFixed(1)}%/NIGHT` : '—'}</span></div>
-        ${mm.note ? `<div class="t">${esc(mm.note)}</div>` : ''}
-        <div style="margin-top:auto">${chips([...new Set(['EnergyRemaining', 'Odometer', ...regenFields(tw), 'ACChargingEnergyIn', 'api:charging_history'])], state.signals)}</div>
-      </div>
-    </div>${overviewGraphics(state)}`;
 }
 
 export function carDrivingView(state) {

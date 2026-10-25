@@ -10,6 +10,8 @@ A dashboard for one Tesla Model S Plaid. It's a single web app that installs on 
 - **Drive**: 0–60 estimate from your launches, tri-motor torque split, friction circle, motor heat
 - **Alerts** to your phone: Sentry alarm, tire warning, update ready, car left unlocked or window open away from home, charge complete
 
+Explore six connected chapters: **Vehicle**, **Energy**, **Journeys**, **Condition**, **Dynamics**, and **Insights**. The same interactive car changes camera, lighting, and annotations with each chapter; click a tire or charge-port annotation to inspect its data. The Vehicle chapter combines a weekly journal with observations, software notes, and the signal stream. Open **Insights** (`#/insights`) for the full evidence-backed analysis.
+
 Data comes from Tesla Fleet Telemetry, plus Bluetooth through a Raspberry Pi in the garage. Any reading can show where it came from and how old it is (Setup → Display → data-source chips).
 
 ## Try it

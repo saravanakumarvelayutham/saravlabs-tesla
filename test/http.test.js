@@ -40,6 +40,18 @@ before(async () => {
 });
 after(() => server.close());
 
+test('unversioned app assets revalidate while vendor files remain cacheable', async () => {
+  for (const path of ['/', '/js/app.js', '/js/views/home.js', '/js/views/overview.js', '/css/app.css', '/sw.js']) {
+    const res = await fetch(`${base}${path}`);
+    assert.equal(res.status, 200, path);
+    assert.equal(res.headers.get('cache-control'), 'no-cache', path);
+    await res.text();
+  }
+  const vendor = await fetch(`${base}/vendor/three/RoomEnvironment.js`);
+  assert.equal(vendor.headers.get('cache-control'), 'public, max-age=3600');
+  await vendor.text();
+});
+
 test('API needs the passcode', async () => {
   assert.equal((await req('GET', '/healthz')).status, 200);
   assert.equal((await req('GET', '/api/state')).status, 401);

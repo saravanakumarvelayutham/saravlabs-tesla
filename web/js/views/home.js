@@ -1,15 +1,7 @@
 // Phone · Car tab: the 3D car with live state, range, quick facts, insights, signal stream.
 import { sig, updateStage, useData } from '../core.js';
-import { car3dSlot } from '../car3d.js';
-import { overviewGraphics } from './overview.js';
-import { ago, chips, clock, esc, fmtValue, icon, num, sampleBadge, temp } from '../ui.js';
-
-export function liveLine(state) {
-  const latest = Object.values(state.signals).reduce((m, e) => Math.max(m, e.ts || 0), 0);
-  const fresh = Date.now() - latest < 5 * 60_000;
-  const src = state.meta.sample_mode ? 'Sample data' : state.meta.telemetry?.status === 'DISCONNECTED' ? 'Telemetry offline' : 'Telemetry';
-  return `<div class="liveline"><span class="live${fresh ? '' : ' off'}"></span><span>${fresh ? 'Live' : 'Last seen'} · ${src} · ${ago(latest)}</span></div>`;
-}
+import { monthMoney } from './car.js';
+import { ago, chips, clock, esc, fmtValue, icon, num, temp } from '../ui.js';
 
 // One line in plain words: what the car is doing, its lock state, and charging.
 export function carStatus() {
@@ -23,22 +15,6 @@ export function carStatus() {
   else if (cs && cs !== 'Disconnected') parts.push(`Plugged in · ${cs}`);
   if (sig('LocatedAtHome') === true) parts.push('Home');
   return parts.join(' · ');
-}
-
-// Range, battery and limit under the car, the way the Tesla app leads with them.
-export function heroStats(state) {
-  const soc = sig('Soc');
-  const limit = sig('ChargeLimitSoc');
-  const fill = typeof soc === 'number' ? Math.max(0, Math.min(100, soc)) : 0;
-  const color = fill < 20 ? 'var(--amber)' : /Charging/.test(sig('DetailedChargeState') || '') ? 'var(--green)' : 'var(--text)';
-  return `<div class="hero-stats">
-    <div class="range"><span class="v">${num(sig('RatedRange'))}</span><span class="u">mi</span></div>
-    <div class="batt" role="img" aria-label="Battery ${num(soc)} percent, charge limit ${num(limit)} percent">
-      <div class="batt-bar"><div style="width:${fill}%;background:${color}"></div>${typeof limit === 'number' ? `<i style="left:${limit}%"></i>` : ''}</div>
-      <span>${num(soc)}%</span>
-    </div>
-    ${chips(['RatedRange', 'Soc', 'ChargeLimitSoc', 'DetailedChargeState'], state.signals)}
-  </div>`;
 }
 
 function facts(state) {
@@ -105,34 +81,14 @@ function logLinks(state) {
 }
 
 export function homeView(state) {
-  const tires = useData('tires', '/api/health/tires', 5 * 60_000);
-  return `
-    ${intelligenceHeader()}
-    <div class="head">
-      <div class="stack" style="gap:4px">
-        <h1 class="car-name">${esc(sig('VehicleName') || 'My Plaid')}</h1>
-        <div class="status">${esc(carStatus())}</div>
-      </div>
-      <div class="stack" style="align-items:flex-end;gap:8px">${sampleBadge(state.meta)}<a href="#/setup" class="iconbtn" aria-label="Setup">${icon('gear', 20, 'var(--text-2)')}</a></div>
-    </div>
-    <div class="hero">
-      ${vehicleStageHeader()}
-      ${car3dSlot(state.signals, (tires?.leaks || []).map((l) => l.tire))}
-      ${chips(['DoorState', 'FdWindow', 'ChargePortDoorOpen', 'TpmsPressureFl', 'TpmsPressureFr', 'TpmsPressureRl', 'TpmsPressureRr'], state.signals)}
-    </div>
-    ${heroStats(state)}
+  const trips = useData('trips', '/api/trips?limit=60', 120_000);
+  const charging = useData('charging', '/api/charging', 120_000);
+  const week = trips?.week?.this_week;
+  const month = monthMoney(charging?.month, state.meta.currency);
+  return `<div class="journal-intro"><div><span class="chapter-kicker">THE CURRENT CHAPTER</span><h2>Life with ${esc(sig('VehicleName') || 'your Plaid')}.</h2><p>${esc(carStatus())}</p></div><a class="text-link" href="#/insights">Read your car's story ↗</a></div>
+    <div class="vehicle-journal-grid"><article class="pn journal-mileage"><div class="chapter-kicker">THIS WEEK / ON THE ROAD</div><div class="journal-distance">${num(week?.miles)}<span>miles</span></div><div class="journal-comparison"><span><b>${num(week?.trips)}</b> completed drives</span><span><b>${num(week?.wh_per_mile)}</b> Wh/mi</span></div><div class="journal-cost"><span>${esc(month.label)}</span><strong>${month.value}</strong></div><a class="text-link" href="#/trips">Open the journey log ↗</a>${chips(['Odometer', 'EnergyRemaining'], state.signals)}</article>${insights(state)}</div>
     ${facts(state)}
-    ${overviewGraphics(state)}
-    ${insights(state)}
+    <div class="journal-section-label"><span>THE OWNER'S NOTEBOOK</span><i></i><span>DETAILS WORTH KNOWING</span></div>
     ${logLinks(state)}
-    ${streamPanel(state)}
-    ${liveLine(state)}`;
-}
-
-export function intelligenceHeader() {
-  return `<div class="identity"><a href="#/" class="identity-brand" aria-label="Plaid dashboard"><span class="identity-mark" aria-hidden="true">${icon('pulse', 22)}</span><span>PLAID<span class="identity-sub">VEHICLE INTELLIGENCE</span></span></a><span class="identity-edition">MODEL S / TRI-MOTOR</span></div>`;
-}
-
-export function vehicleStageHeader() {
-  return `<div class="stage-heading"><span class="eyebrow">Vehicle / Digital twin</span><span class="stage-coordinate">MODEL S</span></div>`;
+    ${streamPanel(state)}`;
 }
