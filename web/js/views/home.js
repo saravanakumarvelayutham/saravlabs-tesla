@@ -1,5 +1,5 @@
 // Phone · Car tab: live status, car wireframe, energy, signal stream, insights.
-import { sig, useData } from '../core.js';
+import { sig, updateStage, useData } from '../core.js';
 import { ago, carTop, chips, clock, esc, fmtValue, icon, num, sampleBadge, temp } from '../ui.js';
 
 export function liveLine(state) {
@@ -55,7 +55,7 @@ function insights(state) {
     items.push(['#/health', 'clock', 'var(--cyan)', `Sentry nights use ${drain.sentry_avg.toFixed(1)}% overnight`, `Average of ${sentryNights.length} nights${ratio}`]);
   }
   const upd = sig('SoftwareUpdateVersion');
-  if (upd) items.push(['#/updates', 'download', 'var(--cyan)', `Software update ${esc(upd)} is ready`, 'Release notes · install from the car or the Tesla app']);
+  if (upd) items.push(['#/updates', 'download', 'var(--cyan)', `Software update ${esc(upd)} ${updateStage()}`, 'Release notes · install from the car or the Tesla app']);
   // Leaks and updates already have their own line above, so skip their events here.
   const shown = new Set(['tire_leak', ...(upd ? ['software_update'] : [])]);
   for (const ev of state.events.filter((e) => !shown.has(e.kind)).slice(0, 2)) items.push(['#/', 'pulse', 'var(--violet)', esc(ev.title), `${esc(ev.body || '')} · ${ago(ev.ts)}`]);
@@ -75,7 +75,7 @@ function logLinks(state) {
   const alertSub = active ? `${active} active now` : recent != null ? `${recent} in the last 7 days` : 'Recent alerts from the car';
   const upd = sig('SoftwareUpdateVersion');
   return `<div class="grid2">
-    <a class="pn tile" href="#/updates">${icon('doc', 22, 'var(--cyan)')}<span style="font-weight:500">Software</span><span class="t">${upd ? `${esc(upd)} ready` : esc(sig('Version') || 'Release notes')}</span></a>
+    <a class="pn tile" href="#/updates">${icon('doc', 22, 'var(--cyan)')}<span style="font-weight:500">Software</span><span class="t">${upd ? `${esc(upd)} ${updateStage()}` : esc(sig('Version') || 'Release notes')}</span></a>
     <a class="pn tile" href="#/alerts">${icon('bell', 22, active ? 'var(--amber)' : 'var(--cyan)')}<span style="font-weight:500">Alerts</span><span class="t">${esc(alertSub)}</span></a>
   </div>`;
 }
