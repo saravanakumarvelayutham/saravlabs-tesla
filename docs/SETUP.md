@@ -75,15 +75,15 @@ curl https://plaid.example.com/.well-known/appspecific/com.tesla.3p.public-key.p
 
 The app only listens beyond localhost when `APP_PASSCODE` is set, so Caddy can't reach it without one.
 
-**Register with Tesla, then pair the key:**
+**Register with Tesla:**
 
 ```bash
 docker compose exec app node scripts/register-partner.js plaid.example.com
 ```
 
-Then open `https://tesla.com/_ak/plaid.example.com` on your phone. The Tesla app asks you to approve the key in the car.
+**Link your account, then pair the key.** Tesla only accepts the virtual key after you've granted the app access to your account; pairing first fails with "Adding a virtual key … is forbidden because you have not granted … access to your account". So first open the dashboard, enter the passcode, and go to Setup → Link Tesla account (or open `https://plaid.example.com/auth/login`). Then open `https://tesla.com/_ak/plaid.example.com` on your phone. The Tesla app asks you to approve the key in the car.
 
-**Link your account and start streaming.** Open the dashboard, enter the passcode, go to Setup → Link Tesla account, then Setup → Send config to car (or `npm run telemetry-config -- --apply`). Wait until the config shows `synced: true`. If no data arrives, `npm run telemetry-config -- --status` shows Tesla's error list.
+**Start streaming.** Setup → Send config to car (or `npm run telemetry-config -- --apply`). Wait until the config shows `synced: true`. If no data arrives, `npm run telemetry-config -- --status` shows Tesla's error list.
 
 **Notifications.** On iPhone, open the dashboard in Safari, Share → Add to Home Screen, open it from the Home Screen, then Setup → Enable alerts. Safari only allows web push for Home Screen apps (iOS 16.4+).
 
