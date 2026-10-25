@@ -43,6 +43,7 @@ export async function setupView(state_) {
       <div class="t">Tiles come from OpenStreetMap, so their servers see the area of each route you open. Off draws routes on the bare grid.</div>
       <label>Paint on the 3D car<select data-action="paint">${Object.entries(PAINTS).map(([k, p]) => `<option value="${k}" ${prefs.paint === k ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>
       <div class="t">Tesla's telemetry doesn't report paint colour, so pick yours here. 3D view: ${esc(car3dInfo())}.</div>
+      <div class="t">Detailed Plaid model by <a href="https://sketchfab.com/lachie.mullard">3D Hawk</a>, <a href="/models/LICENSE.txt">CC BY 4.0</a>. The source is labeled 2021; it is not certified 2023 CAD. Doors, windows and charge-port state appear as telemetry labels; the mesh is not animated.</div>
       <label>Temperature<select data-action="temp-unit"><option value="F" ${prefs.temp === 'F' ? 'selected' : ''}>°F</option><option value="C" ${prefs.temp === 'C' ? 'selected' : ''}>°C</option></select></label>
     </div>
     ${m.tesla_linked ? `<div class="pn">

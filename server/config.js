@@ -1,8 +1,9 @@
 // Runtime configuration, read once from the environment (and ./.env when present).
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const root = fileURLToPath(new URL('../', import.meta.url));
 
 if (fs.existsSync(path.join(root, '.env')) && typeof process.loadEnvFile === 'function') {
   process.loadEnvFile(path.join(root, '.env'));

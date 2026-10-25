@@ -65,7 +65,7 @@ function streamPanel(state) {
   </div>`;
 }
 
-function insights(state) {
+export function insights(state) {
   const tires = useData('tires', '/api/health/tires', 5 * 60_000);
   const drain = useData('drain', '/api/health/drain', 10 * 60_000);
   const items = [];
@@ -83,8 +83,8 @@ function insights(state) {
   // Leaks and updates already have their own line above, so skip their events here.
   const shown = new Set(['tire_leak', ...(upd ? ['software_update', 'software_update_ready'] : [])]);
   for (const ev of state.events.filter((e) => !shown.has(e.kind)).slice(0, 2)) items.push(['#/', 'pulse', 'var(--violet)', esc(ev.title), `${esc(ev.body || '')} · ${ago(ev.ts)}`]);
-  if (!items.length) return '';
-  return `<div class="pn" style="gap:12px"><div class="k">Insights</div>
+  if (!items.length) return `<div class="pn intelligence"><div class="eyebrow">Intelligence / Observations</div><div class="t">No insights available yet. Tire and overnight energy trends appear as history accumulates.</div></div>`;
+  return `<div class="pn intelligence" style="gap:12px"><div class="eyebrow">Intelligence / Observations</div>
     ${items.slice(0, 4).map(([href, ic, color, title, sub]) => `<a class="insight" href="${href}">${icon(ic, 28, color)}<div class="stack"><span style="font-size:15px;font-weight:500">${title}</span><span class="t">${sub}</span></div></a>`).join('')}
     ${chips(['TpmsPressureRl', 'Soc', 'SentryMode', 'SoftwareUpdateVersion'], state.signals)}
   </div>`;
@@ -107,6 +107,7 @@ function logLinks(state) {
 export function homeView(state) {
   const tires = useData('tires', '/api/health/tires', 5 * 60_000);
   return `
+    ${intelligenceHeader()}
     <div class="head">
       <div class="stack" style="gap:4px">
         <h1 class="car-name">${esc(sig('VehicleName') || 'My Plaid')}</h1>
@@ -115,6 +116,7 @@ export function homeView(state) {
       <div class="stack" style="align-items:flex-end;gap:8px">${sampleBadge(state.meta)}<a href="#/setup" class="iconbtn" aria-label="Setup">${icon('gear', 20, 'var(--text-2)')}</a></div>
     </div>
     <div class="hero">
+      ${vehicleStageHeader()}
       ${car3dSlot(state.signals, (tires?.leaks || []).map((l) => l.tire))}
       ${chips(['DoorState', 'FdWindow', 'ChargePortDoorOpen', 'TpmsPressureFl', 'TpmsPressureFr', 'TpmsPressureRl', 'TpmsPressureRr'], state.signals)}
     </div>
@@ -125,4 +127,12 @@ export function homeView(state) {
     ${logLinks(state)}
     ${streamPanel(state)}
     ${liveLine(state)}`;
+}
+
+export function intelligenceHeader() {
+  return `<div class="identity"><a href="#/" class="identity-brand" aria-label="Plaid dashboard"><span class="identity-mark" aria-hidden="true">${icon('pulse', 22)}</span><span>PLAID<span class="identity-sub">VEHICLE INTELLIGENCE</span></span></a><span class="identity-edition">MODEL S / TRI-MOTOR</span></div>`;
+}
+
+export function vehicleStageHeader() {
+  return `<div class="stage-heading"><span class="eyebrow">Vehicle / Digital twin</span><span class="stage-coordinate">MODEL S</span></div>`;
 }

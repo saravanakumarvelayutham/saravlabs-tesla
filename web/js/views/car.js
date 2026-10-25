@@ -3,7 +3,7 @@
 import { sig, useData } from '../core.js';
 import { arc, chips, esc, money, num, psi, sampleBadge, temp } from '../ui.js';
 import { car3dSlot } from '../car3d.js';
-import { carStatus, liveLine } from './home.js';
+import { carStatus, liveLine, insights, intelligenceHeader, vehicleStageHeader } from './home.js';
 import { regenFields } from './trips.js';
 import { overviewGraphics } from './overview.js';
 
@@ -44,6 +44,7 @@ export async function carParkedView(state) {
   const tw = trips?.week?.this_week;
   const mm = monthMoney(charging?.month, state.meta.currency);
   return `
+    ${intelligenceHeader()}
     <div class="car-top">
       <div class="row" style="gap:18px;justify-content:flex-start"><h1 class="car-name">${esc(sig('VehicleName') || 'My Plaid')}</h1><span class="status">${esc(carStatus())}</span>${liveLine(state)}</div>
       <div class="row" style="gap:12px"><nav class="car-nav" aria-label="Screens"><a href="#/charge">Charge</a><a href="#/trips">Trips</a><a href="#/health">Health</a><a href="#/drive">Drive</a></nav>${sampleBadge(state.meta)}</div>
@@ -62,9 +63,11 @@ export async function carParkedView(state) {
         ${tireGrid(state, tires)}
       </div>
       <div class="pn car-hero">
+        ${vehicleStageHeader()}
         ${car3dSlot(state.signals, (tires?.leaks || []).map((l) => l.tire), 'fill')}
         <div class="row car-hero-foot"><span>Inside ${temp(sig('InsideTemp'))} · Outside ${temp(sig('OutsideTemp'))}</span><span>${num(sig('Odometer'))} mi</span></div>
         ${chips(['DoorState', 'TpmsPressureFl', 'InsideTemp', 'OutsideTemp', 'Locked', 'FdWindow', 'SentryMode'], state.signals)}
+        ${insights(state)}
       </div>
       <div class="pn">
         <div class="k">This week</div>

@@ -18,6 +18,8 @@ const MIME = {
   '.webmanifest': 'application/manifest+json',
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
+  '.glb': 'model/gltf-binary',
+  '.txt': 'text/plain; charset=utf-8',
   '.pem': 'application/x-pem-file',
 };
 const SESSION_DAYS = 30;

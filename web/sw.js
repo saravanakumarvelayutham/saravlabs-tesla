@@ -1,9 +1,11 @@
 // Service worker: offline shell, web push, notification taps.
-const CACHE = 'plaid-v6';
+const CACHE = 'plaid-v7';
 const SHELL = ['/', '/index.html', '/css/app.css', '/js/app.js', '/js/core.js', '/js/ui.js', '/js/map.js',
   '/js/views/home.js', '/js/views/charge.js', '/js/views/trips.js', '/js/views/health.js', '/js/views/drive.js',
   '/js/views/car.js', '/js/views/setup.js', '/js/views/signal.js', '/js/views/log.js', '/js/views/overview.js', '/js/car3d.js',
-  '/vendor/three/three.module.min.js', '/vendor/three/three.core.min.js', '/vendor/three/RoomEnvironment.js', '/manifest.webmanifest', '/icons/icon.svg'];
+  '/vendor/three/three.module.min.js', '/vendor/three/three.core.min.js', '/vendor/three/RoomEnvironment.js',
+  '/vendor/three/GLTFLoader.js', '/vendor/three/BufferGeometryUtils.js', '/vendor/three/meshopt_decoder.module.js',
+  '/models/model-s-plaid.glb', '/models/LICENSE.txt', '/manifest.webmanifest', '/icons/icon.svg'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

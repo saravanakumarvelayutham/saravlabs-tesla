@@ -1,0 +1,21 @@
+Model Information:
+* title:	Tesla Model S Plaid 2021
+* source:	https://sketchfab.com/3d-models/tesla-model-s-plaid-2021-481866a0b23143b18e8e4e7f642cee53
+* author:	3D Hawk (https://sketchfab.com/lachie.mullard)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Tesla Model S Plaid 2021" (https://sketchfab.com/3d-models/tesla-model-s-plaid-2021-481866a0b23143b18e8e4e7f642cee53) by 3D Hawk (https://sketchfab.com/lachie.mullard) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+Local distribution:
+* Asset mirror: https://github.com/jz237/jez237-site/blob/main/demos/model-s-studio/model-s.glb
+* Mirror adaptations: separated surfaces, normalized dimensions, meshopt compression; original geometric detail retained.
+* Dashboard adaptations: coordinate orientation and scale normalization, selectable paint, wheel/glass material adjustments, telemetry labels.
+* Target appearance: owner's 2023 Model S Plaid, Ultra Red, 21-inch Arachnid wheels.
+* Fidelity limitation: artist-authored asset titled 2021; not manufacturer CAD or a verified exact 2023 replica. No verified articulation rig.
+
+Three.js GLTFLoader and BufferGeometryUtils are vendored from r180 under web/vendor/three/LICENSE.
+Meshopt decoder is vendored from Three.js r180; MIT copyright notice is included in meshopt_decoder.module.js.
+Dashboard plate artwork replaced with a locally generated DEVIL registration texture on both plates.
