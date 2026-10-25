@@ -2,14 +2,14 @@
 
 A dashboard for one Tesla Model S Plaid. It's a single web app that installs on the phone's Home Screen and also runs full screen in the car's browser.
 
-- **Car**: live state, car wireframe with tire pressures, lock/climate/charge limit/Sentry/update buttons
+- **Car**: an interactive 3D Model S that shows open doors, frunk, trunk, windows and the charge port as the car reports them, with tire pressures, range and cabin temperature
 - **Charge**: current session, DC charging curve, monthly kWh, home and Supercharger cost, cost per mile
 - **Trips**: every drive with route trace and Wh/mi along the way
 - **Health**: pack capacity over time, cell balance, overnight drain with and without Sentry, slow-leak detection per tire
 - **Drive**: 0–60 estimate from your launches, tri-motor torque split, friction circle, motor heat
 - **Alerts** to your phone: Sentry alarm, tire warning, update ready, car left unlocked or window open away from home, charge complete
 
-Data comes from Tesla Fleet Telemetry, plus Bluetooth through a Raspberry Pi in the garage. Every reading shows where it came from and how old it is.
+Data comes from Tesla Fleet Telemetry, plus Bluetooth through a Raspberry Pi in the garage. Any reading can show where it came from and how old it is (Setup → Display → data-source chips).
 
 ## Try it
 

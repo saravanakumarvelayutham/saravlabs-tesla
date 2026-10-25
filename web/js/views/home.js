@@ -1,32 +1,55 @@
-// Phone · Car tab: live status, car wireframe, energy, signal stream, insights.
+// Phone · Car tab: the 3D car with live state, range, quick facts, insights, signal stream.
 import { sig, updateStage, useData } from '../core.js';
-import { ago, carTop, chips, clock, esc, fmtValue, icon, num, sampleBadge, temp } from '../ui.js';
+import { car3dSlot } from '../car3d.js';
+import { ago, chips, clock, esc, fmtValue, icon, num, sampleBadge, temp } from '../ui.js';
 
 export function liveLine(state) {
   const latest = Object.values(state.signals).reduce((m, e) => Math.max(m, e.ts || 0), 0);
   const fresh = Date.now() - latest < 5 * 60_000;
-  const src = state.meta.sample_mode ? 'Sample' : state.meta.telemetry?.status === 'DISCONNECTED' ? 'Telemetry offline' : 'Telemetry';
-  return `<div class="row" style="justify-content:flex-start;gap:8px"><span class="live${fresh ? '' : ' off'}"></span><span class="k" style="color:${fresh ? 'var(--green)' : 'var(--muted)'}">${fresh ? 'Live link' : 'Last seen'} · ${src} · ${ago(latest)}</span></div>`;
+  const src = state.meta.sample_mode ? 'Sample data' : state.meta.telemetry?.status === 'DISCONNECTED' ? 'Telemetry offline' : 'Telemetry';
+  return `<div class="liveline"><span class="live${fresh ? '' : ' off'}"></span><span>${fresh ? 'Live' : 'Last seen'} · ${src} · ${ago(latest)}</span></div>`;
 }
 
-export function energyPanel(state, { compact = false } = {}) {
+// One line in plain words: what the car is doing, its lock state, and charging.
+export function carStatus() {
+  const g = sig('Gear');
+  const moving = /ShiftState[DRN]/.test(g || '');
+  const cs = (sig('DetailedChargeState') || '').replace('DetailedChargeState', '');
+  const parts = [moving ? 'Driving' : 'Parked'];
+  const locked = sig('Locked');
+  if (locked != null) parts.push(locked ? 'Locked' : 'Unlocked');
+  if (cs === 'Charging') parts.push(`Charging to ${num(sig('ChargeLimitSoc'))}%`);
+  else if (cs && cs !== 'Disconnected') parts.push(`Plugged in · ${cs}`);
+  if (sig('LocatedAtHome') === true) parts.push('Home');
+  return parts.join(' · ');
+}
+
+// Range, battery and limit under the car, the way the Tesla app leads with them.
+export function heroStats(state) {
   const soc = sig('Soc');
   const limit = sig('ChargeLimitSoc');
-  const segs = 40;
-  const on = typeof soc === 'number' ? Math.round((soc / 100) * segs) : 0;
-  const limitSeg = typeof limit === 'number' ? Math.round((limit / 100) * segs) : -1;
-  const cs = (sig('DetailedChargeState') || '').replace('DetailedChargeState', '') || '—';
-  const plug = cs === 'Disconnected' ? 'Unplugged' : cs;
-  return `<div class="pn" style="gap:10px">
-    <div class="row end">
-      <div><div class="k">Energy</div><div class="big glow cyan" style="font-size:${compact ? 54 : 64}px">${num(soc)}<span style="font-size:26px">%</span></div></div>
-      <div style="text-align:right"><div class="mono" style="font-size:22px;font-weight:700">${num(sig('RatedRange'))} MI</div><div class="k">Rated range</div></div>
+  const fill = typeof soc === 'number' ? Math.max(0, Math.min(100, soc)) : 0;
+  const color = fill < 20 ? 'var(--amber)' : /Charging/.test(sig('DetailedChargeState') || '') ? 'var(--green)' : 'var(--text)';
+  return `<div class="hero-stats">
+    <div class="range"><span class="v">${num(sig('RatedRange'))}</span><span class="u">mi</span></div>
+    <div class="batt" role="img" aria-label="Battery ${num(soc)} percent, charge limit ${num(limit)} percent">
+      <div class="batt-bar"><div style="width:${fill}%;background:${color}"></div>${typeof limit === 'number' ? `<i style="left:${limit}%"></i>` : ''}</div>
+      <span>${num(soc)}%</span>
     </div>
-    <div class="seg-bar" role="img" aria-label="Battery ${num(soc)} percent, limit ${num(limit)} percent">
-      ${Array.from({ length: segs }, (_, i) => `<div class="seg${i < on ? ' on' : ''}${i === limitSeg ? ' limit' : ''}"></div>`).join('')}
-    </div>
-    <div class="row k"><span>Limit ${num(limit)}%</span><span>${esc(plug)}</span></div>
-    ${chips(['Soc', 'RatedRange', 'ChargeLimitSoc', 'DetailedChargeState'], state.signals)}
+    ${chips(['RatedRange', 'Soc', 'ChargeLimitSoc', 'DetailedChargeState'], state.signals)}
+  </div>`;
+}
+
+function facts(state) {
+  const sentry = sig('SentryMode');
+  const sentryOn = typeof sentry === 'string' && !/Off|Unknown/.test(sentry);
+  const locked = sig('Locked');
+  const cell = (label, value, cls = '') => `<div class="fact"><span class="fv ${cls}">${value}</span><span class="fl">${label}</span></div>`;
+  return `<div class="facts">
+    ${cell('Inside', temp(sig('InsideTemp')))}
+    ${cell('Outside', temp(sig('OutsideTemp')))}
+    ${cell('Doors', locked === false ? 'Unlocked' : locked ? 'Locked' : '—', locked === false ? 'amber' : '')}
+    ${cell('Sentry', sentryOn ? 'On' : sentry ? 'Off' : '—', sentryOn ? 'red' : '')}
   </div>`;
 }
 
@@ -84,20 +107,20 @@ export function homeView(state) {
   const tires = useData('tires', '/api/health/tires', 5 * 60_000);
   return `
     <div class="head">
-      <div class="stack" style="gap:6px">
-        <div class="k">Model S Plaid</div>
-        <div style="font-size:26px;font-weight:700;letter-spacing:-0.01em">${esc(sig('VehicleName') || 'My Plaid')}</div>
-        ${liveLine(state)}
+      <div class="stack" style="gap:4px">
+        <h1 class="car-name">${esc(sig('VehicleName') || 'My Plaid')}</h1>
+        <div class="status">${esc(carStatus())}</div>
       </div>
-      <div class="stack" style="align-items:flex-end;gap:8px">${sampleBadge(state.meta)}<a href="#/setup" class="k" aria-label="Setup">${icon('gear', 20, 'var(--muted)')}</a></div>
+      <div class="stack" style="align-items:flex-end;gap:8px">${sampleBadge(state.meta)}<a href="#/setup" class="iconbtn" aria-label="Setup">${icon('gear', 20, 'var(--text-2)')}</a></div>
     </div>
-    <div class="pn" style="padding:8px 8px 12px">
-      ${carTop(state.signals, { leaks: (tires?.leaks || []).map((l) => l.tire) })}
-      <div style="padding:0 8px">${chips(['TpmsPressureFl', 'TpmsPressureRl', 'InsideTemp', 'OutsideTemp', 'Locked', 'DoorState', 'SentryMode'], state.signals)}</div>
+    <div class="hero">
+      ${car3dSlot(state.signals, (tires?.leaks || []).map((l) => l.tire))}
+      ${chips(['DoorState', 'FdWindow', 'ChargePortDoorOpen', 'TpmsPressureFl', 'TpmsPressureFr', 'TpmsPressureRl', 'TpmsPressureRr'], state.signals)}
     </div>
-    ${energyPanel(state)}
-    ${streamPanel(state)}
+    ${heroStats(state)}
+    ${facts(state)}
     ${insights(state)}
     ${logLinks(state)}
-    <div class="t center">Cabin ${temp(sig('InsideTemp'), true)}.</div>`;
+    ${streamPanel(state)}
+    ${liveLine(state)}`;
 }

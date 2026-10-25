@@ -122,18 +122,18 @@ function bandChart({ pts, from, to, lo, hi, d, unit, range, field }) {
   const Y = (v) => top + (1 - (v - ymin) / (ymax - ymin)) * (bottom - top);
   const f = (n) => n.toFixed(1);
   const band = pts.length > 1
-    ? `<path d="M${pts.map((p) => `${f(X(p[0]))},${f(Y(p[3]))}`).join(' L')} L${pts.slice().reverse().map((p) => `${f(X(p[0]))},${f(Y(p[2]))}`).join(' L')} Z" fill="rgba(79,227,255,0.14)" stroke="none"></path>`
+    ? `<path d="M${pts.map((p) => `${f(X(p[0]))},${f(Y(p[3]))}`).join(' L')} L${pts.slice().reverse().map((p) => `${f(X(p[0]))},${f(Y(p[2]))}`).join(' L')} Z" fill="rgba(90,167,255,0.14)" stroke="none"></path>`
     : '';
   const line = pts.map((p) => `${f(X(p[0]))},${f(Y(p[1]))}`).join(' ');
   const last = pts[pts.length - 1];
   const fmtT = range === '7d' ? (t) => new Date(t).toLocaleDateString([], { weekday: 'short' }).toUpperCase() : (t) => clock(t).slice(0, 5);
   // A week is labelled at local midnights; shorter ranges at quarters.
   const ticks = range === '7d' ? midnights(from, to) : [0, 0.25, 0.5, 0.75].map((q) => from + q * (to - from));
-  const grid = [0.25, 0.5, 0.75].map((q) => `<line x1="${left}" x2="${w - right}" y1="${f(top + q * (bottom - top))}" y2="${f(top + q * (bottom - top))}" stroke="rgba(79,227,255,0.07)" stroke-dasharray="2 4"></line>`).join('');
+  const grid = [0.25, 0.5, 0.75].map((q) => `<line x1="${left}" x2="${w - right}" y1="${f(top + q * (bottom - top))}" y2="${f(top + q * (bottom - top))}" stroke="rgba(90,167,255,0.07)" stroke-dasharray="2 4"></line>`).join('');
   return `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(field)} over the last ${esc(range)}: min ${lo.toFixed(d)}, max ${hi.toFixed(d)} ${esc(unit)}">
     <defs><filter id="sgl" x="-10%" y="-30%" width="120%" height="160%"><feGaussianBlur stdDeviation="3"></feGaussianBlur></filter></defs>
     ${grid}
-    <line x1="${left}" y1="${bottom}" x2="${w - right}" y2="${bottom}" stroke="rgba(79,227,255,0.18)"></line>
+    <line x1="${left}" y1="${bottom}" x2="${w - right}" y2="${bottom}" stroke="rgba(90,167,255,0.18)"></line>
     ${band}
     <polyline points="${line}" fill="none" stroke="var(--cyan)" stroke-width="4" opacity="0.55" filter="url(#sgl)"></polyline>
     <polyline points="${line}" fill="none" stroke="var(--cyan)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"></polyline>

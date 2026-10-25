@@ -1,6 +1,7 @@
 // Setup: connection status, Tesla account link, telemetry config, notifications, display prefs.
 import { actions, api, load, render, state, toast } from '../core.js';
 import { ago, esc, prefs } from '../ui.js';
+import { PAINTS, car3dInfo } from '../car3d.js';
 
 export function loginView() {
   return `<form id="login" class="pn" style="margin-top:20vh;gap:14px">
@@ -40,6 +41,8 @@ export async function setupView(state_) {
       <label class="check"><input type="checkbox" data-action="toggle-sources" ${prefs.sources ? 'checked' : ''}> Show data-source chips</label>
       <label class="check"><input type="checkbox" data-action="toggle-maps" ${prefs.maps ? 'checked' : ''}> Map tiles behind trip routes</label>
       <div class="t">Tiles come from OpenStreetMap, so their servers see the area of each route you open. Off draws routes on the bare grid.</div>
+      <label>Paint on the 3D car<select data-action="paint">${Object.entries(PAINTS).map(([k, p]) => `<option value="${k}" ${prefs.paint === k ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>
+      <div class="t">Tesla's telemetry doesn't report paint colour, so pick yours here. 3D view: ${esc(car3dInfo())}.</div>
       <label>Temperature<select data-action="temp-unit"><option value="F" ${prefs.temp === 'F' ? 'selected' : ''}>°F</option><option value="C" ${prefs.temp === 'C' ? 'selected' : ''}>°C</option></select></label>
     </div>
     ${m.tesla_linked ? `<div class="pn">
@@ -85,6 +88,7 @@ Object.assign(actions, {
   'toggle-sources': (el) => { prefs.sources = el.checked; render(); },
   'toggle-maps': (el) => { prefs.maps = el.checked; render(); },
   'temp-unit': (el) => { prefs.temp = el.value; render(); },
+  paint: (el) => { prefs.paint = el.value; render(); },
   'telemetry-apply': async () => {
     try { await api('/api/tesla/telemetry-config', { method: 'POST' }); toast('Config sent. Check below for synced: true.'); delete state.cache.tcfg; render(); } catch (err) { toast(err.message, true); }
   },

@@ -36,7 +36,7 @@ export async function batteryView(state) {
       <div class="row"><span class="k">Overnight drain · ${nights.length} nights</span>
         <span class="mono amber" style="font-size:13px">${d.sentry_avg != null && d.no_sentry_avg ? `SENTRY ${(d.sentry_avg / d.no_sentry_avg).toFixed(1)}×` : ''}</span></div>
       <svg class="chart" viewBox="0 0 326 120" role="img" aria-label="Overnight battery drain per night">
-        <line x1="0" y1="96" x2="326" y2="96" stroke="rgba(79,227,255,0.18)"></line>
+        <line x1="0" y1="96" x2="326" y2="96" stroke="rgba(90,167,255,0.18)"></line>
         ${nights.map((n, i) => {
           const hgt = n.drain_pct != null ? (Math.max(0, n.drain_pct) / maxDrain) * 70 : 0;
           const x = i * bw + bw * 0.2;
@@ -103,7 +103,7 @@ export async function tiresView(state) {
     ${switcher('tires')}
     <div class="pn" style="padding:8px">
       <svg class="chart" viewBox="0 0 356 340" role="img" aria-label="Tire pressures in psi">
-        <path d="M138,46 C138,26 218,26 218,46 L226,116 L226,280 C226,302 130,302 130,280 L130,116 Z" fill="rgba(79,227,255,0.03)" stroke="rgba(79,227,255,0.55)" stroke-width="1.5"></path>
+        <path d="M138,46 C138,26 218,26 218,46 L226,116 L226,280 C226,302 130,302 130,280 L130,116 Z" fill="rgba(90,167,255,0.03)" stroke="rgba(90,167,255,0.55)" stroke-width="1.5"></path>
         ${gauge('FL', 58, 78)}${gauge('FR', 298, 78)}${gauge('RL', 58, 250)}${gauge('RR', 298, 250)}
         <text class="m" x="178" y="172" fill="var(--muted)" font-size="9" text-anchor="middle" letter-spacing="1.2">TARGET</text>
         <text x="178" y="192" fill="var(--text)" font-size="18" font-weight="600" text-anchor="middle">${target || 'not set'}</text>
