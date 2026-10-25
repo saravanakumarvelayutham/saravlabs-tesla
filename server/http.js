@@ -144,16 +144,6 @@ export function createServer(app) {
     return { ...cacheMeta(app, hit), ...parseRecentAlerts(hit?.data), streamed: app.streamedAlerts.list(50), raw: hit?.data ?? null };
   });
 
-  // --- commands ---
-  route('POST', /^\/api\/command\/([a-z_]+)$/, async (req, res, { params }) => {
-    const body = await readJson(req);
-    try {
-      return await app.commands.run(params[0], body.args || {}, body.via || 'auto');
-    } catch (err) {
-      return send(res, err.status || 500, { error: err.message, detail: err.body });
-    }
-  });
-
   // --- web push ---
   route('GET', '/api/push/key', () => ({ enabled: app.push.enabled, publicKey: app.push.publicKey || null, subscriptions: app.push.count() }));
   route('POST', '/api/push/subscribe', async (req) => { app.push.subscribe(await readJson(req)); return { ok: true }; });
@@ -203,28 +193,11 @@ export function createServer(app) {
   // --- garage Pi bridge ---
   route('POST', '/api/bridge/state', async (req, res) => {
     const body = await readJson(req);
-    app.commands.bridgeSeen = Date.now();
-    if (body.reached_car) app.commands.bridgeReachedCar = Date.now();
-    if (body.sleep) app.bridgeSleep = body.sleep;
+    app.bridge.seen = Date.now();
+    if (body.reached_car) app.bridge.reachedCar = Date.now();
+    if (body.sleep) app.bridge.sleep = body.sleep;
     const fields = body.kind ? ingestBle(app.store, body) : {};
     return { ok: true, fields: Object.keys(fields) };
-  }, { bridge: true });
-  route('GET', '/api/bridge/next', async (req, res) => {
-    app.commands.bridgeSeen = Date.now();
-    const deadline = Date.now() + 25_000;
-    while (Date.now() < deadline) {
-      const job = app.commands.nextForBridge();
-      if (job) return job;
-      await new Promise((r) => setTimeout(r, 500));
-      if (req.destroyed) return undefined;
-    }
-    res.writeHead(204);
-    res.end();
-    return undefined;
-  }, { bridge: true });
-  route('POST', /^\/api\/bridge\/result\/(\d+)$/, async (req, res, { params }) => {
-    app.commands.bridgeResult(Number(params[0]), await readJson(req));
-    return { ok: true };
   }, { bridge: true });
 
   const server = http.createServer(async (req, res) => {
@@ -267,7 +240,7 @@ function meta(app) {
     vin: config.vin || null,
     tesla_configured: Boolean(app.auth),
     tesla_linked: app.auth?.linked || false,
-    bridge: { ...app.commands.bridgeStatus(), sleep: app.bridgeSleep || null },
+    bridge: app.bridge.status(),
     telemetry: app.connectivity || null,
     push: { enabled: app.push.enabled },
     home_rate: config.homeRatePerKwh || null,

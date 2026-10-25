@@ -23,7 +23,7 @@ function accessToken(sub) {
   const payload = {
     iss: 'https://fleet-auth.prd.vn.cloud.tesla.com/oauth2/v3/nts',
     aud: ['https://fleet-api.prd.na.vn.cloud.tesla.com', 'https://fleet-auth.prd.vn.cloud.tesla.com/oauth2/v3/userinfo'],
-    sub, ou_code: 'NA', scp: ['openid', 'vehicle_device_data', 'vehicle_cmds', 'vehicle_charging_cmds'],
+    sub, ou_code: 'NA', scp: ['openid', 'vehicle_device_data', 'vehicle_location', 'vehicle_charging_cmds'],
     exp: Math.floor(Date.now() / 1000) + 8 * 3600, iat: Math.floor(Date.now() / 1000),
   };
   return `${raw64({ alg: 'RS256', typ: 'JWT' })}.${raw64(payload)}.c2lnbmF0dXJl`;
@@ -111,7 +111,7 @@ async function handle(req, res) {
     const form = Object.fromEntries(new URLSearchParams(body.toString()));
     record({ ...entry, kind: 'token', grant_type: form.grant_type, client_id: form.client_id, has_secret: Boolean(form.client_secret), code: form.code, audience: form.audience, redirect_uri: form.redirect_uri, scope: form.scope });
     if (form.grant_type === 'authorization_code' && form.code !== 'e2e-code') return json(res, 400, { error: 'invalid_grant' });
-    return json(res, 200, { access_token: accessToken(form.grant_type === 'client_credentials' ? 'partner' : 'e2e-user'), refresh_token: `rt-${Date.now()}`, expires_in: 28800, token_type: 'Bearer', scope: form.scope || 'openid offline_access vehicle_device_data vehicle_cmds' });
+    return json(res, 200, { access_token: accessToken(form.grant_type === 'client_credentials' ? 'partner' : 'e2e-user'), refresh_token: `rt-${Date.now()}`, expires_in: 28800, token_type: 'Bearer', scope: form.scope || 'openid offline_access vehicle_device_data vehicle_location vehicle_charging_cmds' });
   }
 
   if (host === 'fleet-api.prd.na.vn.cloud.tesla.com') {
@@ -134,8 +134,7 @@ async function handle(req, res) {
     }
     if ((m = /^\/api\/1\/vehicles\/(\w+)\/(signed_command|command\/\w+|wake_up)$/.exec(p))) {
       record({ ...entry, kind: 'vehicle_command', vin: m[1], endpoint: m[2], body_bytes: body.length, body: body.toString().slice(0, 300) });
-      // The fake can't answer the signed session handshake (that needs the car's own key),
-      // so it answers the way Fleet API does for an offline car.
+      // The app sends no commands; this is here so the e2e run can prove none arrive.
       return json(res, 408, { response: null, error: 'vehicle unavailable: vehicle is offline or asleep', error_description: '' });
     }
     if (p === '/api/1/partner_accounts' && req.method === 'POST') {

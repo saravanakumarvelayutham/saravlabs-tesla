@@ -93,12 +93,8 @@ body.hide-src .srcs { display: none; }
 .insight { display: flex; gap: 12px; align-items: center; text-decoration: none; color: var(--text); min-height: 44px; }
 .insight svg { flex: none; }
 
-.cmds { display: flex; justify-content: space-around; padding: 4px 0; }
-.cmd-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.cmd { width: 64px; height: 64px; border-radius: 50%; border: 1px solid rgba(79, 227, 255, 0.35); background: rgba(79, 227, 255, 0.06); color: var(--cyan); display: flex; align-items: center; justify-content: center; cursor: pointer; }
-.cmd:active, .bigbtn:active { transform: scale(0.96); }
-.cmd[aria-busy='true'], .bigbtn[aria-busy='true'] { opacity: 0.5; }
-.cmd.on { background: rgba(79, 227, 255, 0.18); box-shadow: 0 0 18px rgba(79, 227, 255, 0.35); }
+.bigbtn:active { transform: scale(0.96); }
+.bigbtn[aria-busy='true'] { opacity: 0.5; }
 .bigbtn { flex: 1; min-height: 56px; border-radius: 16px; border: 1px solid rgba(79, 227, 255, 0.35); background: rgba(79, 227, 255, 0.06); color: var(--cyan); font: 600 13px var(--mono); letter-spacing: 0.1em; text-transform: uppercase; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; padding: 0 12px; }
 .bigbtn.ghost { color: var(--text-2); border-color: var(--line); background: transparent; }
 

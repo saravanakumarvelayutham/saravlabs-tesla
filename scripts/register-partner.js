@@ -19,7 +19,7 @@ const tokenRes = await fetch(tokenUrl, {
     grant_type: 'client_credentials',
     client_id: clientId,
     client_secret: clientSecret,
-    scope: 'openid vehicle_device_data vehicle_cmds vehicle_charging_cmds',
+    scope: 'openid vehicle_device_data vehicle_location vehicle_charging_cmds',
     audience,
   }),
 });

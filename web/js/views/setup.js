@@ -53,12 +53,7 @@ export async function setupView(state_) {
       <div class="t">Tesla doesn't publish this response's format, so it's shown as received. Supercharger costs are read from it using the field names community clients report; if the Charging tab says records weren't read, this raw view shows what Tesla actually sent.</div>
       <button class="bigbtn ghost" data-action="refresh-history" type="button">Fetch now</button>
       <pre>${esc(hist ? JSON.stringify(hist, null, 2).slice(0, 4000) : 'Not fetched yet')}</pre>
-    </div>` : ''}
-    <div class="pn">
-      <div class="k">Wake the car</div>
-      <div class="t">The app never wakes the car on its own: a wake is a billed Fleet API request and keeps the car from sleeping. Use this only if you need fresh data now.</div>
-      <button class="bigbtn ghost" type="button" data-cmd="wake_up" data-label="Wake" data-confirm="Wake the car? This is a billed Fleet API call.">Wake car</button>
-    </div>`;
+    </div>` : ''}`;
 }
 
 function b64ToBytes(b64) {

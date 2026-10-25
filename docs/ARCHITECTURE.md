@@ -7,7 +7,7 @@
             │                                                                      │  SQLite
             └── Bluetooth ── garage Pi (tesla-control) ──HTTPS──────────────────────┤  web push
                                                                                    │  SSE
-      Fleet API ◀── tesla-http-proxy (signs with virtual key) ◀────── commands ────┤
+      Fleet API ◀── tesla-http-proxy (signs with virtual key) ◀─ telemetry config ─┤
                                                                                    ▼
                                                       PWA (phone Home Screen app + car browser)
 ```
@@ -35,19 +35,19 @@ Every value lands in `history` (append-only) and `latest`, and the UI shows wher
 
 Thresholds that are this app's choice (not Tesla's) are labeled as such in the UI.
 
-## Commands
+## No car commands
 
-`server/commands.js` has an allowlist with argument checks. A command goes over Bluetooth when the Pi reached the car in the last 2 minutes, otherwise through `tesla-http-proxy` to Fleet API. The app never wakes the car by itself.
+The app is for analytics and recommendations, so it sends no commands to the car (no lock, climate, charging control or wake) and has no command endpoint. The virtual key is still needed because Tesla requires `fleet_telemetry_config` to be signed with it; `tesla-http-proxy` does that signing. The Pi only reads state.
 
 ## Front end
 
-No build step: `web/` is static ES modules. `core.js` holds state and the API client, `app.js` routes and opens the SSE stream, each screen is a view function returning HTML. Width ≥ 1000 px (or `?view=car`) shows the car-browser layout, which switches to a glance view with no controls while the car isn't in Park. The service worker caches the shell and shows push notifications.
+No build step: `web/` is static ES modules. `core.js` holds state and the API client, `app.js` routes and opens the SSE stream, each screen is a view function returning HTML. Width ≥ 1000 px (or `?view=car`) shows the car-browser layout, which switches to a glance view while the car isn't in Park. The service worker caches the shell and shows push notifications.
 
 Trip routes are drawn over OpenStreetMap raster tiles (`web/js/map.js`), recolored to the dashboard palette by an SVG filter. No key or account is needed; the [OSMF tile usage policy](https://operations.osmfoundation.org/policies/tiles/) asks for visible attribution (drawn on the map), the browser's normal Referer and User-Agent, no prefetching and no offline storage. Each tile is fetched once per page session and reused from memory, because views re-render on every live signal. Setup → Display → *Map tiles behind trip routes* turns them off, and then no request goes to openstreetmap.org.
 
 ## Security
 
 - `APP_PASSCODE` login with an HMAC-signed cookie and a login rate limit. Without a passcode the server only listens on localhost.
-- The bridge authenticates with `BRIDGE_TOKEN` and can only run allowlisted commands.
+- The bridge authenticates with `BRIDGE_TOKEN` and can only post state readings.
 - The virtual key stays inside the proxy container; the Pi uses its own Bluetooth key.
 - Tesla refresh tokens are single use, so the app saves the new one each time it refreshes.

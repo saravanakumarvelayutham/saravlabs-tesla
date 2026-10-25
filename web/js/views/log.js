@@ -1,6 +1,6 @@
 // Software (release notes) and Alerts screens. Both read Fleet API data the server cached; nothing
 // here calls Tesla until the Fetch button is pressed, and the car is never woken for it.
-import { actions, api, isDriving, load, render, state, toast } from '../core.js';
+import { actions, api, load, render, state, toast } from '../core.js';
 import { ago, chips, clock, dateTime, esc, icon, sampleBadge } from '../ui.js';
 
 const head = (title, meta) => `<div class="head"><div class="stack" style="gap:6px"><a class="k" href="#/">← Car</a><h1>${title}</h1></div>${sampleBadge(meta)}</div>`;
@@ -26,13 +26,12 @@ function shapeNote(d, kind) {
 
 export async function releaseNotesView(st) {
   const d = await load('relnotes', '/api/vehicle/release-notes', 60_000);
-  const update = d.update && !isDriving()
+  const update = d.update
     ? `<div class="update">
         <div class="row"><div class="stack"><span class="k amber">Update ready</span><span class="mono" style="font-size:22px;font-weight:700">${esc(d.update)}</span></div>${icon('download', 28, 'var(--amber)')}</div>
-        <button class="bigbtn" type="button" data-cmd="schedule_software_update" data-args='{"offset_sec":0}' data-label="Update" data-confirm="Install ${esc(d.update)} now? The car can't be driven during the install.">Install now</button>
-        <div class="t">These notes are the ones Tesla returns for the car. Whether they describe the installed version or the waiting update isn't documented, so check the version on each note.</div>
+        <div class="t">Install it from the car's screen or the Tesla app when parked. These notes are the ones Tesla returns for the car. Whether they describe the installed version or the waiting update isn't documented, so check the version on each note.</div>
       </div>`
-    : d.update ? `<div class="t">Update ${esc(d.update)} is ready. Install it when parked.</div>` : '';
+    : '';
   const notes = d.notes.length
     ? d.notes.map((n, i) => `<article class="note${i === 0 ? ' first' : ''}">
         <div class="row" style="align-items:flex-start"><div class="stack" style="gap:4px">

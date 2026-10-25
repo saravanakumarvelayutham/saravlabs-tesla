@@ -1,13 +1,12 @@
 # Garage Pi bridge
 
-When the car is parked at home, a Raspberry Pi in the garage reads its state and sends commands over Bluetooth, using Tesla's own [`tesla-control`](https://github.com/teslamotors/vehicle-command/tree/main/cmd/tesla-control). That avoids Fleet API charges and works when the car's internet connection is slow.
+When the car is parked at home, a Raspberry Pi in the garage reads its state over Bluetooth, using Tesla's own [`tesla-control`](https://github.com/teslamotors/vehicle-command/tree/main/cmd/tesla-control). That avoids Fleet API charges and works when the car's internet connection is slow.
 
 What it does:
 
 - About every 60 s it runs `tesla-control -ble body-controller-state`. Tesla says this works while the car is asleep, and it doesn't wake the car. It reports lock state and whether the car is asleep.
 - Only when the car is awake does it also read `state charge`, `climate`, `tire-pressure` and `closures`.
-- It long-polls the server for commands. The server sends a command here when the Pi has reached the car in the last 2 minutes. If the car is asleep, the bridge sends `wake` first and waits up to 20 s.
-- It only runs an allowlist of commands: lock, unlock, climate on/off, charge limit, charge start/stop, Sentry, software update, flash, honk, wake.
+- It only reads. It never sends a command to the car, and the server has no way to ask it to.
 
 This hasn't been tested on a Pi with a real car yet.
 

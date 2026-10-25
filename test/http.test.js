@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import { config } from '../server/config.js';
 import { createApp } from '../server/index.js';
 import { createServer } from '../server/http.js';
-import { COMMANDS } from '../server/commands.js';
 import { kvSet } from '../server/db.js';
 import { buildTelemetryConfig, SIGNALS } from '../server/signals.js';
 
@@ -52,22 +51,10 @@ test('API needs the passcode', async () => {
   assert.equal(state.json.meta.sample_mode, false);
 });
 
-test('command arguments are validated before anything is sent', async () => {
-  const bad = await req('POST', '/api/command/set_charge_limit', { body: { args: { percent: 120 } } });
-  assert.equal(bad.status, 400);
-  assert.equal((await req('POST', '/api/command/rm_rf', { body: {} })).status, 400);
-});
-
-test('a Bluetooth command goes through the bridge queue and back', async () => {
+test('the app has no way to send commands to the car', async () => {
   const auth = { authorization: 'Bearer bridge-token' };
-  assert.equal((await req('GET', '/api/bridge/next', { headers: { authorization: 'Bearer nope' } })).status, 401);
-  const pending = req('POST', '/api/command/set_charge_limit', { body: { args: { percent: 80 }, via: 'ble' } });
-  const job = await req('GET', '/api/bridge/next', { headers: auth });
-  assert.deepEqual({ command: job.json.command, args: job.json.args }, { command: 'charging-set-limit', args: ['80'] });
-  await req('POST', `/api/bridge/result/${job.json.id}`, { headers: auth, body: { ok: true, output: '' } });
-  const done = await pending;
-  assert.equal(done.status, 200);
-  assert.equal(done.json.via, 'ble');
+  assert.equal((await req('POST', '/api/command/door_unlock', { body: {} })).status, 404);
+  assert.equal((await req('GET', '/api/bridge/next', { headers: auth })).status, 404);
 });
 
 test('bridge state is stored with source BLE', async () => {
@@ -79,16 +66,6 @@ test('bridge state is stored with source BLE', async () => {
   assert.deepEqual(r.json.fields, ['Locked']);
   assert.equal(app.store.entry('Locked').source, 'BLE');
   assert.equal((await req('GET', '/api/state')).json.meta.bridge.car_in_range, true);
-});
-
-test('every command maps to an allowlisted tesla-control subcommand', async () => {
-  const fs = await import('node:fs');
-  const bridge = fs.readFileSync(new URL('../pi-bridge/bridge.js', import.meta.url), 'utf8');
-  const sample = { set_charge_limit: { percent: 80 }, set_sentry_mode: { on: true }, schedule_software_update: { offset_sec: 0 } };
-  for (const [name, def] of Object.entries(COMMANDS)) {
-    const args = def.validate ? def.validate(sample[name]) : {};
-    assert.ok(bridge.includes(`'${def.ble(args)[0]}'`), `${name} → ${def.ble(args)[0]} missing from the bridge allowlist`);
-  }
 });
 
 test('telemetry config covers every signal with its interval', () => {

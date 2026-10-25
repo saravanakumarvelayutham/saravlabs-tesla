@@ -9,7 +9,7 @@ import { config } from '../server/config.js';
 import { createApp } from '../server/index.js';
 import { createServer } from '../server/http.js';
 
-test('the Pi bridge posts state and runs a queued command', async () => {
+test('the Pi bridge posts state and only runs read commands', async () => {
   const app = createApp({ ...config, sampleMode: false, appPasscode: '', bridgeToken: 'bt', vin: 'V' }, { dbFile: ':memory:' });
   const server = createServer(app);
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
@@ -34,9 +34,9 @@ test('the Pi bridge posts state and runs a queued command', async () => {
     await until(() => app.store.get('Soc') === 64);
     assert.equal(app.store.get('Locked'), true);
     assert.equal(app.store.entry('Soc').source, 'BLE');
-    const result = await app.commands.run('door_unlock', {}, 'ble');
-    assert.equal(result.via, 'ble');
-    assert.match(fs.readFileSync(log, 'utf8'), /^unlock$/m);
+    assert.equal(app.bridge.status().car_in_range, true);
+    const calls = fs.readFileSync(log, 'utf8').trim().split('\n');
+    assert.ok(calls.every((c) => /^(body-controller-state|state [a-z-]+)$/.test(c)), calls.join(', '));
   } finally {
     child.kill();
     server.close();

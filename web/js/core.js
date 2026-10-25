@@ -55,4 +55,3 @@ export function useData(key, path, maxAge = 60_000) {
 }
 
 export const sig = (f) => state.signals[f]?.value ?? null;
-export const isDriving = () => ['ShiftStateD', 'ShiftStateR', 'ShiftStateN'].includes(sig('Gear'));

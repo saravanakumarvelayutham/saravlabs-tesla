@@ -1,4 +1,4 @@
-// App shell: data loading, live stream, routing, commands.
+// App shell: data loading, live stream, routing.
 import { esc, icon, prefs } from './ui.js';
 import { state, api, toast, actions, setRender } from './core.js';
 import { homeView } from './views/home.js';
@@ -13,21 +13,6 @@ import { signalSheet, sheetSignal } from './views/signal.js';
 
 const root = document.getElementById('app');
 const dock = document.getElementById('dock');
-
-async function runCommand(btn) {
-  const name = btn.dataset.cmd;
-  const args = btn.dataset.args ? JSON.parse(btn.dataset.args) : {};
-  if (btn.dataset.confirm && !window.confirm(btn.dataset.confirm)) return;
-  btn.setAttribute('aria-busy', 'true');
-  try {
-    const r = await api(`/api/command/${name}`, { method: 'POST', body: { args } });
-    toast(`${btn.dataset.label || name} sent${r.via ? ` · ${r.via.toUpperCase()}` : ''}`);
-  } catch (err) {
-    toast(`${btn.dataset.label || name} failed: ${err.message}`, true);
-  } finally {
-    btn.removeAttribute('aria-busy');
-  }
-}
 
 const isWide = () => window.innerWidth >= 1000 || new URLSearchParams(location.search).get('view') === 'car';
 const driving = () => {
@@ -106,8 +91,6 @@ function render() {
 }
 
 root.addEventListener('click', (e) => {
-  const btn = e.target.closest('[data-cmd]');
-  if (btn) { e.preventDefault(); runCommand(btn); return; }
   const act = e.target.closest('[data-action]');
   if (act && !['INPUT', 'SELECT'].includes(act.tagName)) { e.preventDefault(); actions[act.dataset.action]?.(act); }
 });

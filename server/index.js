@@ -10,7 +10,7 @@ import { Drive } from './derive/drive.js';
 import { Alerts } from './derive/alerts.js';
 import { StreamedAlerts } from './derive/vehicle-log.js';
 import { Push } from './push.js';
-import { Commands } from './commands.js';
+import { Bridge } from './bridge.js';
 import { TeslaAuth } from './tesla/auth.js';
 import { Fleet } from './tesla/fleet.js';
 import { startMqtt } from './ingest/mqtt.js';
@@ -34,14 +34,14 @@ export function createApp(cfg = config, { dbFile } = {}) {
   }
   app.fleetCache = (what) => kvGet(db, `cache:${what}`);
   app.streamedAlerts = new StreamedAlerts(db);
-  app.commands = new Commands(db, { fleet: app.fleet, sampleMode: cfg.sampleMode, store, broadcast });
+  app.bridge = new Bridge();
   app.alerts = new Alerts(db, store, { push: app.push, health: app.health, charging: app.charging, broadcast });
   return app;
 }
 
 function main() {
   if (!config.appPasscode && !config.sampleMode) {
-    console.warn('[plaid] APP_PASSCODE is not set: the dashboard (and car commands) will be open to anyone who can reach it.');
+    console.warn('[plaid] APP_PASSCODE is not set: the dashboard will be open to anyone who can reach it.');
   }
   const app = createApp();
   const { store, config: cfg } = app;
