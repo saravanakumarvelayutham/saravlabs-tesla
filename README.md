@@ -3,6 +3,7 @@
 A dashboard for one Tesla Model S Plaid. It's a single web app that installs on the phone's Home Screen and also runs full screen in the car's browser.
 
 - **Car**: an interactive 3D Model S that shows open doors, frunk, trunk, windows and the charge port as the car reports them, with tire pressures, range and cabin temperature
+- **Insights**: a personalized range estimate to a 10% reserve, energy use by trip length, regen recovery, overnight drain expressed as driving-energy equivalents, observed DC charging taper, and cold tire-pressure trends. Each panel shows its evidence and sample limits; simulated data is labeled. Range requires five recent measured drives and fresh, closely timed battery readings.
 - **Charge**: current session, DC charging curve, monthly kWh, home and Supercharger cost, cost per mile
 - **Trips**: every drive with route trace and Wh/mi along the way
 - **Health**: pack capacity over time, cell balance, overnight drain with and without Sentry, slow-leak detection per tire

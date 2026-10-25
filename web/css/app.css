@@ -247,34 +247,6 @@ body.wide .car-name { font-size: 28px; }
 .tire-cell.amber .fv, .tire-cell.amber .fl { color: var(--amber); }
 body.wide .car3d-tag { font-size: 16px; padding: 5px 12px; }
 body.wide .car3d-tag b { font-size: 18px; }
-/* Historical overview: shared by phone and parked-car layouts. */
-.overview { margin: 20px 0; }
-.overview > .eyebrow { margin-bottom: 14px; }
-.overview-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-.overview-card { min-width: 0; gap: 14px; }
-.overview-card h2 { margin: 0; color: var(--text-2); }
-.overview-link { font-size: 12px; white-space: nowrap; color: var(--cyan); }
-.overview-value { font: 42px var(--mono); color: var(--cyan); letter-spacing: -.05em; }
-.overview-value > span { font-size: 13px; letter-spacing: 0; color: var(--muted); }
-.overview-columns { display: flex; gap: 8px; align-items: end; margin: 8px 0; }
-.overview-column { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; text-align: center; font-size: 11px; }
-.overview-column .t { font-size: 9px; white-space: nowrap; }
-.overview-bar-space { height: 80px; display: flex; align-items: end; justify-content: center; }
-.overview-column-bar { width: 70%; max-width: 32px; border-radius: 4px 4px 0 0; background: var(--violet); opacity: .6; }
-.overview-column-bar.current { background: var(--cyan); opacity: 1; }
-.overview-note { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--line); line-height: 1.6; }
-.overview-mix { display: flex; align-items: center; gap: 12px; }
-.overview-mix svg { width: 44%; max-width: 160px; flex-shrink: 0; }
-.overview-legend { flex: 1; font-size: 11px; }
-.overview-legend > div { display: flex; align-items: center; gap: 6px; margin: 14px 0; }
-.overview-legend strong { margin-left: auto; }
-.overview-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-.overview-cost { margin-top: 8px; color: var(--text); font-size: 17px; }
-.overview-cost span { display: block; font-size: 11px; color: var(--muted); }
-.overview-drain { display: grid; gap: 22px; padding: 14px 0; font-size: 13px; }
-.overview-track { height: 10px; border-radius: 6px; background: var(--track); overflow: hidden; margin: 10px 0 6px; }
-.overview-track > div { height: 100%; border-radius: inherit; }
-@media (max-width: 999px) { .overview-grid { grid-template-columns: 1fr; } }
 
 /* Vehicle intelligence: shared instruments, with a dedicated digital-twin stage. */
 :root {
@@ -361,5 +333,60 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   .stage-coordinate { font-size: 9px; }
   .st { font-size: 10px; grid-template-columns: 55px minmax(0, 1fr) auto; gap: 5px; }
 }
+/* Evidence-led insights, shared by the phone and parked dashboard. */
+.overview { margin: 26px 0; }
+.intel-heading { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin-bottom: 20px; }
+.intel-kicker { font: 10px var(--mono); letter-spacing: .18em; color: var(--cyan); }
+.intel-heading h2 { font-size: clamp(24px, 3vw, 34px); letter-spacing: -.045em; margin: 10px 0; font-weight: 500; }
+.intel-heading p { font-size: 13px; color: var(--muted); margin: 0; }
+.intel-data-label { border: 1px solid var(--line); border-radius: 5px; padding: 8px 10px; font: 9px var(--mono); color: var(--muted); white-space: nowrap; }
+.intel-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.intel-card { padding: 24px; position: relative; overflow: hidden; gap: 16px; border-radius: 16px; background: linear-gradient(150deg, rgba(42, 77, 91, .2), transparent 65%), var(--panel); }
+.intel-card.intel-range { border-color: rgba(98, 227, 239, .35); background: radial-gradient(ellipse at 95% 0, rgba(49, 163, 177, .22), transparent 70%), var(--panel); }
+.intel-card.intel-regen { background: radial-gradient(ellipse at 100% 0, rgba(43, 217, 107, .1), transparent 70%), var(--panel); }
+.intel-top { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; font: 10px var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.intel-top a { color: var(--cyan); text-decoration: none; }
+.intel-card h2 { font-size: clamp(21px, 2vw, 28px); line-height: 1.2; letter-spacing: -.035em; font-weight: 500; margin: 0; }
+.intel-card p { color: var(--text-2); font-size: 13px; line-height: 1.65; margin: 0; }
+.intel-metric { font: 56px var(--mono); letter-spacing: -.07em; color: var(--cyan); }
+.intel-metric span { display: block; font: 12px var(--mono); letter-spacing: 0; color: var(--muted); margin-top: 5px; }
+.intel-regen .intel-metric { color: var(--green); }
+.intel-range-bars { display: grid; gap: 14px; padding: 10px 0; }
+.intel-range-row { display: grid; grid-template-columns: 110px 1fr 55px; align-items: center; gap: 12px; font-size: 11px; }
+.intel-range-row > div { height: 8px; background: var(--track); border-radius: 8px; }
+.intel-range-row i { display: block; height: 100%; background: var(--cyan); border-radius: inherit; }
+.intel-range-row b { text-align: right; font: 11px var(--mono); }
+.intel-plot { display: block; width: 100%; max-height: 190px; overflow: visible; }
+.intel-plot text { fill: var(--muted); font: 10px var(--mono); }
+.intel-axis { fill: none; stroke: var(--line); }
+.intel-reference { fill: none; stroke: var(--violet); stroke-dasharray: 4 4; }
+.intel-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.intel-pair > div { display: flex; flex-direction: column; gap: 7px; padding-top: 12px; border-top: 1px solid var(--line); }
+.intel-pair span { font-size: 10px; color: var(--muted); }
+.intel-pair b { font: 22px var(--mono); }
+.intel-pair small, .intel-tire-grid small { font-size: 10px; color: var(--muted); }
+.intel-flow { display: flex; height: 18px; border-radius: 5px; overflow: hidden; }
+.intel-flow span:first-child { background: var(--cyan); }
+.intel-flow span:last-child { background: var(--green); }
+.intel-nights { display: flex; align-items: end; gap: 10px; padding-top: 10px; }
+.intel-nights > div { flex: 1; text-align: center; font: 10px var(--mono); min-width: 0; }
+.intel-nights b { font-weight: 400; }
+.intel-nights span { color: var(--muted); font-size: 9px; }
+.intel-night-bar { height: 70px; display: flex; align-items: end; justify-content: center; margin: 8px 0; }
+.intel-night-bar i { display: block; width: 65%; max-width: 24px; border-radius: 4px 4px 0 0; }
+.intel-tire-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.intel-tire-grid > div { display: flex; flex-direction: column; gap: 10px; border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+.intel-tire-grid span { font: 10px var(--mono); color: var(--muted); }
+.intel-tire-grid b { font: 24px var(--mono); }
+.intel-tire-grid svg { width: 100%; height: 35px; }
+.intel-tire-grid .intel-flag { border-color: var(--amber); color: var(--amber); background: rgba(255, 185, 70, .04); }
+.intel-method { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--line); }
+.intel-method summary { cursor: pointer; font: 10px var(--mono); color: var(--muted); padding: 5px 0; }
+.intel-card .intel-evidence { font-size: 11px; color: var(--muted); padding-top: 8px; }
+.intel-wait { color: var(--muted); padding: 28px 0; font-size: 13px; line-height: 1.6; }
+body.wide #app { height: auto; min-height: 100vh; }
+@media (min-width: 1000px) and (max-width: 1350px) { .intel-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 999px) { .intel-grid { grid-template-columns: 1fr; } .intel-heading { align-items: start; flex-direction: column; gap: 12px; } }
+@media (max-width: 400px) { .intel-card { padding: 18px; } .intel-range-row { grid-template-columns: 95px 1fr 50px; gap: 8px; } }
 .car3d-credit { position: absolute; left: 10px; bottom: 6px; z-index: 1; font-size: 10px; color: var(--muted); text-decoration: none; }
 .car3d-credit:hover { color: var(--cyan); }
