@@ -4,6 +4,11 @@ import { normalizeValue } from '../server/store.js';
 import { parseTopic, handleMessage } from '../server/ingest/mqtt.js';
 import { mapBleState, ingestBle } from '../server/ingest/ble.js';
 import { memStore } from './helpers.js';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { config } from '../server/config.js';
+import { createApp } from '../server/index.js';
 
 test('normalizeValue coerces numeric fields and keeps enums', () => {
   assert.equal(normalizeValue('Soc', '71.5'), 71.5);
@@ -79,4 +84,11 @@ test('mapBleState reads the recommended pressure and last-seen times from TirePr
   assert.equal(out.TpmsRcpFront, 2.9);
   assert.equal(out.TpmsRcpRear, 3.0);
   assert.equal(out.TpmsLastSeenPressureTimeFl, '2026-10-24T13:00:00Z');
+});
+
+test('the last connectivity event survives a restart', () => {
+  const dbFile = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'conn-')), 'plaid.db');
+  const cfg = { ...config, sampleMode: false, tesla: { ...config.tesla, clientId: '', clientSecret: '' } };
+  createApp(cfg, { dbFile }).setConnectivity({ ConnectionId: 'x', Status: 'CONNECTED', CreatedAt: 123 });
+  assert.deepEqual(createApp(cfg, { dbFile }).connectivity, { status: 'CONNECTED', at: 123 });
 });

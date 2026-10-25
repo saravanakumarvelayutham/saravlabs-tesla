@@ -35,6 +35,13 @@ export function createApp(cfg = config, { dbFile } = {}) {
   app.fleetCache = (what) => kvGet(db, `cache:${what}`);
   app.streamedAlerts = new StreamedAlerts(db);
   app.bridge = new Bridge();
+  // Fleet Telemetry only publishes connectivity when the car connects or drops, so keep the last one across restarts.
+  app.connectivity = kvGet(db, 'connectivity');
+  app.setConnectivity = (c) => {
+    app.connectivity = { status: c.Status, at: c.CreatedAt };
+    kvSet(db, 'connectivity', app.connectivity);
+    broadcast('connectivity', app.connectivity);
+  };
   app.alerts = new Alerts(db, store, { push: app.push, health: app.health, charging: app.charging, broadcast });
   return app;
 }
@@ -77,7 +84,7 @@ function main() {
       base: cfg.mqttTopicBase,
       vin: cfg.vin,
       store,
-      onConnectivity: (c) => { app.connectivity = { status: c.Status, at: c.CreatedAt }; app.broadcast('connectivity', app.connectivity); },
+      onConnectivity: app.setConnectivity,
       onAlert: (name, a) => app.broadcast('vehicle-alert', app.streamedAlerts.record(name, a)),
     });
   }
