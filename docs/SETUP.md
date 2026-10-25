@@ -47,6 +47,13 @@ openssl req -x509 -nodes -newkey ec -pkeyopt ec_paramgen_curve:secp384r1 -pkeyop
   -addext "extendedKeyUsage = serverAuth" -addext "keyUsage = digitalSignature, keyCertSign, keyAgreement"
 ```
 
+The tesla-http-proxy image runs as distroless `nonroot` (uid 65532), so give it the two private keys:
+
+```bash
+sudo chown 65532:65532 deploy/config/proxy/fleet-key.pem deploy/config/proxy/tls-key.pem
+sudo chmod 600 deploy/config/proxy/fleet-key.pem deploy/config/proxy/tls-key.pem
+```
+
 **Telemetry certificate.** Copy your certificate, key and full chain into `deploy/config/telemetry/` as `server-cert.pem`, `server-key.pem` and `ca.pem`. The fleet-telemetry image runs as uid 65532, so `server-key.pem` must be readable by that uid. Tesla's [check_server_cert.sh](https://github.com/teslamotors/fleet-telemetry/blob/main/tools/check_server_cert.sh) validates the combination before you configure the car.
 
 If your DNS is on Cloudflare, `deploy/telemetry-cert.sh` does all of this with Let's Encrypt (DNS challenge, so Caddy keeps port 80). Put a Cloudflare API token with Zone:DNS:Edit in `/root/.secrets/cloudflare.ini` as `dns_cloudflare_api_token = ...` (mode 600), then:
