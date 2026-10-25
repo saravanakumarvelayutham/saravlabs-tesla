@@ -5,6 +5,7 @@ import { arc, chips, esc, money, num, psi, sampleBadge, temp } from '../ui.js';
 import { car3dSlot } from '../car3d.js';
 import { carStatus, liveLine } from './home.js';
 import { regenFields } from './trips.js';
+import { overviewGraphics } from './overview.js';
 
 // Month charging money for the parked view: home + Supercharger with cost per mile when the
 // server can price both, else home cost alone, else kWh.
@@ -77,7 +78,7 @@ export async function carParkedView(state) {
         ${mm.note ? `<div class="t">${esc(mm.note)}</div>` : ''}
         <div style="margin-top:auto">${chips([...new Set(['EnergyRemaining', 'Odometer', ...regenFields(tw), 'ACChargingEnergyIn', 'api:charging_history'])], state.signals)}</div>
       </div>
-    </div>`;
+    </div>${overviewGraphics(state)}`;
 }
 
 export function carDrivingView(state) {

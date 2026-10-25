@@ -247,3 +247,31 @@ body.wide .car-name { font-size: 28px; }
 .tire-cell.amber .fv, .tire-cell.amber .fl { color: var(--amber); }
 body.wide .car3d-tag { font-size: 16px; padding: 5px 12px; }
 body.wide .car3d-tag b { font-size: 18px; }
+/* Historical overview: shared by phone and parked-car layouts. */
+.overview { margin: 20px 0; }
+.overview > .eyebrow { margin-bottom: 14px; }
+.overview-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.overview-card { min-width: 0; gap: 14px; }
+.overview-card h2 { margin: 0; color: var(--text-2); }
+.overview-link { font-size: 12px; white-space: nowrap; color: var(--cyan); }
+.overview-value { font: 42px var(--mono); color: var(--cyan); letter-spacing: -.05em; }
+.overview-value > span { font-size: 13px; letter-spacing: 0; color: var(--muted); }
+.overview-columns { display: flex; gap: 8px; align-items: end; margin: 8px 0; }
+.overview-column { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; text-align: center; font-size: 11px; }
+.overview-column .t { font-size: 9px; white-space: nowrap; }
+.overview-bar-space { height: 80px; display: flex; align-items: end; justify-content: center; }
+.overview-column-bar { width: 70%; max-width: 32px; border-radius: 4px 4px 0 0; background: var(--violet); opacity: .6; }
+.overview-column-bar.current { background: var(--cyan); opacity: 1; }
+.overview-note { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--line); line-height: 1.6; }
+.overview-mix { display: flex; align-items: center; gap: 12px; }
+.overview-mix svg { width: 44%; max-width: 160px; flex-shrink: 0; }
+.overview-legend { flex: 1; font-size: 11px; }
+.overview-legend > div { display: flex; align-items: center; gap: 6px; margin: 14px 0; }
+.overview-legend strong { margin-left: auto; }
+.overview-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.overview-cost { margin-top: 8px; color: var(--text); font-size: 17px; }
+.overview-cost span { display: block; font-size: 11px; color: var(--muted); }
+.overview-drain { display: grid; gap: 22px; padding: 14px 0; font-size: 13px; }
+.overview-track { height: 10px; border-radius: 6px; background: var(--track); overflow: hidden; margin: 10px 0 6px; }
+.overview-track > div { height: 100%; border-radius: inherit; }
+@media (max-width: 999px) { .overview-grid { grid-template-columns: 1fr; } }

@@ -1,6 +1,7 @@
 // Phone · Car tab: the 3D car with live state, range, quick facts, insights, signal stream.
 import { sig, updateStage, useData } from '../core.js';
 import { car3dSlot } from '../car3d.js';
+import { overviewGraphics } from './overview.js';
 import { ago, chips, clock, esc, fmtValue, icon, num, sampleBadge, temp } from '../ui.js';
 
 export function liveLine(state) {
@@ -119,6 +120,7 @@ export function homeView(state) {
     </div>
     ${heroStats(state)}
     ${facts(state)}
+    ${overviewGraphics(state)}
     ${insights(state)}
     ${logLinks(state)}
     ${streamPanel(state)}
