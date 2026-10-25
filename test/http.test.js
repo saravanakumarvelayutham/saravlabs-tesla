@@ -174,3 +174,18 @@ test('signal history endpoint serves numeric and state fields', async () => {
   assert.equal(extra.json.kind, 'numeric');
   assert.equal(extra.json.meta, null);
 });
+
+test('login limit is per client behind the proxy, and X-Forwarded-For is ignored otherwise', async () => {
+  const attempt = (b, ip) => fetch(`${b}/api/login`, {
+    method: 'POST', headers: { 'content-type': 'application/json', 'x-forwarded-for': ip }, body: '{"passcode":"wrong"}',
+  }).then((r) => r.status);
+  for (const trustProxy of [true, false]) {
+    const s = createServer(createApp({ ...cfg, trustProxy }, { dbFile: ':memory:' }));
+    await new Promise((r) => s.listen(0, '127.0.0.1', r));
+    const b = `http://127.0.0.1:${s.address().port}`;
+    for (let i = 0; i < 10; i++) await attempt(b, '203.0.113.1');
+    assert.equal(await attempt(b, '203.0.113.1'), 429);
+    assert.equal(await attempt(b, '203.0.113.2'), trustProxy ? 401 : 429);
+    s.close();
+  }
+});

@@ -27,6 +27,8 @@ export const config = {
   // unless the server only listens on localhost in sample mode.
   appPasscode: env.APP_PASSCODE || '',
   sessionSecret: env.SESSION_SECRET || '',
+  // Set when a reverse proxy (deploy/caddy) is the only way in, so X-Forwarded-For names the real client.
+  trustProxy: bool(env.TRUST_PROXY),
 
   vin: env.VIN || '',
 
