@@ -47,7 +47,17 @@ openssl req -x509 -nodes -newkey ec -pkeyopt ec_paramgen_curve:secp384r1 -pkeyop
   -addext "extendedKeyUsage = serverAuth" -addext "keyUsage = digitalSignature, keyCertSign, keyAgreement"
 ```
 
-**Telemetry certificate.** Copy your certificate, key and full chain into `deploy/config/telemetry/` as `server-cert.pem`, `server-key.pem` and `ca.pem`. Tesla's [check_server_cert.sh](https://github.com/teslamotors/fleet-telemetry/blob/main/tools/check_server_cert.sh) validates the combination before you configure the car.
+**Telemetry certificate.** Copy your certificate, key and full chain into `deploy/config/telemetry/` as `server-cert.pem`, `server-key.pem` and `ca.pem`. The fleet-telemetry image runs as uid 65532, so `server-key.pem` must be readable by that uid. Tesla's [check_server_cert.sh](https://github.com/teslamotors/fleet-telemetry/blob/main/tools/check_server_cert.sh) validates the combination before you configure the car.
+
+If your DNS is on Cloudflare, `deploy/telemetry-cert.sh` does all of this with Let's Encrypt (DNS challenge, so Caddy keeps port 80). Put a Cloudflare API token with Zone:DNS:Edit in `/root/.secrets/cloudflare.ini` as `dns_cloudflare_api_token = ...` (mode 600), then:
+
+```bash
+sudo deploy/telemetry-cert.sh telemetry.example.com you@example.com
+# renew daily; it only restarts fleet-telemetry when the certificate changed
+echo "17 4 * * * root $PWD/deploy/telemetry-cert.sh telemetry.example.com you@example.com" | sudo tee /etc/cron.d/telemetry-cert
+```
+
+Both hostnames must be "DNS only" (grey cloud) in Cloudflare: the car authenticates with a TLS client certificate, which fleet-telemetry has to receive directly.
 
 **Start the stack** (opens 80/443 for the dashboard and 8443 for the car):
 
