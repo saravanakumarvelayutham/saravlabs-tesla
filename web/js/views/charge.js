@@ -28,7 +28,7 @@ export async function chargeView(state) {
     <div class="pn" style="align-items:center;padding:12px 16px 16px">
       <svg class="chart" viewBox="0 0 300 260" style="max-width:300px" role="img" aria-label="Charging power ${num(kw)} kilowatts">
         ${arc({ cx: 150, cy: 140, r: 110, frac: (kw || 0) / maxKw, id: 'cd' })}
-        <circle cx="150" cy="140" r="88" fill="none" stroke="rgba(79,227,255,0.12)" stroke-dasharray="1 5"></circle>
+        <circle cx="150" cy="140" r="88" fill="none" stroke="rgba(90,167,255,0.12)" stroke-dasharray="1 5"></circle>
         <text class="m" x="150" y="118" fill="var(--muted)" font-size="10" text-anchor="middle" letter-spacing="1.6">POWER</text>
         <text x="150" y="166" fill="var(--cyan)" font-size="64" font-weight="700" text-anchor="middle" letter-spacing="-2">${cur ? num(kw) : '—'}</text>
         <text class="m" x="150" y="190" fill="var(--text-2)" font-size="13" text-anchor="middle">kW · ${dc ? 'DC' : 'AC'}${typeof volts === 'number' ? ` · ${num(volts)} V` : ''}</text>

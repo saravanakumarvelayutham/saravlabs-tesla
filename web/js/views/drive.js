@@ -10,7 +10,7 @@ export async function driveView(state) {
   const hottest = l ? Math.max(...Object.values(l.stator_c).filter((v) => typeof v === 'number')) : null;
   const motor = (cx, cy, key, label) => {
     const hot = l && l.stator_c[key] === hottest;
-    return `<circle cx="${cx}" cy="${cy}" r="16" fill="${hot ? 'rgba(255,181,71,0.16)' : 'rgba(79,227,255,0.14)'}" stroke="${hot ? 'var(--amber)' : 'var(--cyan)'}" stroke-width="2"></circle>
+    return `<circle cx="${cx}" cy="${cy}" r="16" fill="${hot ? 'rgba(255,181,71,0.16)' : 'rgba(90,167,255,0.14)'}" stroke="${hot ? 'var(--amber)' : 'var(--cyan)'}" stroke-width="2"></circle>
       <text class="m" x="${cx}" y="${cy + 4}" fill="var(--text)" font-size="10" font-weight="700" text-anchor="middle">${label}</text>`;
   };
   const gg = today.gg_points;
@@ -39,16 +39,16 @@ export async function driveView(state) {
     <div class="pn" style="align-items:center">
       <div class="k" style="align-self:flex-start">Tri-motor at launch · torque share and stator temp</div>
       <svg class="chart" viewBox="0 0 326 230" style="max-width:360px" role="img" aria-label="Torque share: front ${pct(share?.F)}, rear left ${pct(share?.RL)}, rear right ${pct(share?.RR)}">
-        <path d="M128,20 C128,6 198,6 198,20 L206,70 L206,196 C206,214 120,214 120,196 L120,70 Z" fill="rgba(79,227,255,0.03)" stroke="rgba(79,227,255,0.4)" stroke-width="1.5"></path>
-        <line x1="163" y1="60" x2="163" y2="160" stroke="rgba(79,227,255,0.35)" stroke-dasharray="3 4"></line>
+        <path d="M128,20 C128,6 198,6 198,20 L206,70 L206,196 C206,214 120,214 120,196 L120,70 Z" fill="rgba(90,167,255,0.03)" stroke="rgba(90,167,255,0.4)" stroke-width="1.5"></path>
+        <line x1="163" y1="60" x2="163" y2="160" stroke="rgba(90,167,255,0.35)" stroke-dasharray="3 4"></line>
         ${motor(163, 50, 'F', 'F')}${motor(140, 176, 'RL', 'RL')}${motor(186, 176, 'RR', 'RR')}
-        <line x1="181" y1="50" x2="236" y2="50" stroke="rgba(79,227,255,0.5)"></line>
+        <line x1="181" y1="50" x2="236" y2="50" stroke="rgba(90,167,255,0.5)"></line>
         <text x="242" y="46" fill="var(--text)" font-size="18" font-weight="700">${pct(share?.F)}</text>
         <text class="m" x="242" y="62" fill="var(--muted)" font-size="9">${temp(l?.stator_c?.F)} STATOR</text>
-        <line x1="122" y1="176" x2="88" y2="176" stroke="rgba(79,227,255,0.5)"></line>
+        <line x1="122" y1="176" x2="88" y2="176" stroke="rgba(90,167,255,0.5)"></line>
         <text x="84" y="172" fill="var(--text)" font-size="18" font-weight="700" text-anchor="end">${pct(share?.RL)}</text>
         <text class="m" x="84" y="188" fill="var(--muted)" font-size="9" text-anchor="end">${temp(l?.stator_c?.RL)} STATOR</text>
-        <line x1="204" y1="176" x2="238" y2="176" stroke="rgba(79,227,255,0.5)"></line>
+        <line x1="204" y1="176" x2="238" y2="176" stroke="rgba(90,167,255,0.5)"></line>
         <text x="242" y="172" fill="var(--text)" font-size="18" font-weight="700">${pct(share?.RR)}</text>
         <text class="m" x="242" y="188" fill="var(--muted)" font-size="9">${temp(l?.stator_c?.RR)} STATOR</text>
       </svg>
@@ -59,10 +59,10 @@ export async function driveView(state) {
       <div class="k">Friction circle · today</div>
       <div class="row" style="gap:14px;justify-content:flex-start">
         <svg width="170" height="170" viewBox="0 0 170 170" role="img" aria-label="Acceleration samples today: lateral ${num(today.lateral_g, 2)} g, braking ${num(today.braking_g, 2)} g, acceleration ${num(today.accel_g, 2)} g">
-          <circle cx="85" cy="85" r="${R}" fill="none" stroke="rgba(79,227,255,0.25)"></circle>
-          <circle cx="85" cy="85" r="${R * 2 / 3}" fill="none" stroke="rgba(79,227,255,0.12)" stroke-dasharray="2 4"></circle>
-          <circle cx="85" cy="85" r="${R / 3}" fill="none" stroke="rgba(79,227,255,0.12)" stroke-dasharray="2 4"></circle>
-          <line x1="9" y1="85" x2="161" y2="85" stroke="rgba(79,227,255,0.12)"></line><line x1="85" y1="9" x2="85" y2="161" stroke="rgba(79,227,255,0.12)"></line>
+          <circle cx="85" cy="85" r="${R}" fill="none" stroke="rgba(90,167,255,0.25)"></circle>
+          <circle cx="85" cy="85" r="${R * 2 / 3}" fill="none" stroke="rgba(90,167,255,0.12)" stroke-dasharray="2 4"></circle>
+          <circle cx="85" cy="85" r="${R / 3}" fill="none" stroke="rgba(90,167,255,0.12)" stroke-dasharray="2 4"></circle>
+          <line x1="9" y1="85" x2="161" y2="85" stroke="rgba(90,167,255,0.12)"></line><line x1="85" y1="9" x2="85" y2="161" stroke="rgba(90,167,255,0.12)"></line>
           ${gg.map(([x, y]) => `<circle cx="${(85 + x * sc).toFixed(1)}" cy="${(85 - y * sc).toFixed(1)}" r="1.6" fill="var(--cyan)" opacity="0.7"></circle>`).join('')}
           <text class="m" x="92" y="18" fill="var(--muted)" font-size="8">ACCEL</text><text class="m" x="92" y="160" fill="var(--muted)" font-size="8">BRAKE</text><text class="m" x="140" y="80" fill="var(--muted)" font-size="8">1.2g</text>
         </svg>

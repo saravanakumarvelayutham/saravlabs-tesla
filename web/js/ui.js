@@ -6,9 +6,13 @@ const pref = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { re
 export const prefs = {
   get temp() { return pref('plaid.temp', 'F'); },
   set temp(v) { try { localStorage.setItem('plaid.temp', v); } catch { /* private mode */ } },
-  get sources() { return pref('plaid.sources', '1') === '1'; },
+  // Off by default: the chips are for checking where a number came from, not everyday reading.
+  get sources() { return pref('plaid.sources', '0') === '1'; },
   set sources(v) { try { localStorage.setItem('plaid.sources', v ? '1' : '0'); } catch { /* private mode */ } },
   // OpenStreetMap tiles behind trip routes. Off means no requests go to tile.openstreetmap.org.
+  // Body colour of the 3D car. Telemetry doesn't report paint, so the owner picks it in Setup.
+  get paint() { return pref('plaid.paint', 'red'); },
+  set paint(v) { try { localStorage.setItem('plaid.paint', v); } catch { /* private mode */ } },
   get maps() { return pref('plaid.maps', '1') === '1'; },
   set maps(v) { try { localStorage.setItem('plaid.maps', v ? '1' : '0'); } catch { /* private mode */ } },
 };
@@ -115,8 +119,8 @@ export function lineChart({ w = 326, h = 140, series, xmin, xmax, ymin, ymax, pa
   }).join('');
   const m = marker ? `<circle cx="${X(marker[0])}" cy="${Y(marker[1])}" r="5" fill="var(--bg)" stroke="${marker[2] || 'var(--cyan)'}" stroke-width="2"></circle>` : '';
   return `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(label)}">
-    <line x1="${pad}" y1="${bottom}" x2="${w - pad}" y2="${bottom}" stroke="rgba(79,227,255,0.18)"></line>
-    <line x1="${pad}" y1="${Y((ymin + ymax) / 2)}" x2="${w - pad}" y2="${Y((ymin + ymax) / 2)}" stroke="rgba(79,227,255,0.08)" stroke-dasharray="2 4"></line>
+    <line x1="${pad}" y1="${bottom}" x2="${w - pad}" y2="${bottom}" stroke="rgba(90,167,255,0.18)"></line>
+    <line x1="${pad}" y1="${Y((ymin + ymax) / 2)}" x2="${w - pad}" y2="${Y((ymin + ymax) / 2)}" stroke="rgba(90,167,255,0.08)" stroke-dasharray="2 4"></line>
     ${paths}${m}${typeof labels === 'function' ? labels({ X, Y, bottom, w, h }) : labels}
   </svg>`;
 }
@@ -139,19 +143,19 @@ export function carTop(sig, { scale = 1, leaks = [] } = {}) {
   const lockColor = locked === false ? 'var(--amber)' : 'var(--green)';
   return `<svg class="chart" viewBox="0 0 356 310" style="max-width:${520 * scale}px;margin:0 auto" role="img" aria-label="Car top view: tires ${num(tire('TpmsPressureFl'))}, ${num(tire('TpmsPressureFr'))}, ${num(tire('TpmsPressureRl'))}, ${num(tire('TpmsPressureRr'))} psi; cabin ${temp(v('InsideTemp'))}; ${lockLabel.toLowerCase()}${sentry ? '; Sentry on' : ''}">
     <defs><filter id="ct" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3"></feGaussianBlur></filter></defs>
-    <ellipse cx="178" cy="150" rx="120" ry="138" fill="none" stroke="rgba(79,227,255,0.10)" stroke-dasharray="2 6"></ellipse>
-    <path d="M138,40 C138,20 218,20 218,40 L226,110 L226,252 C226,274 130,274 130,252 L130,110 Z" fill="rgba(79,227,255,0.04)" stroke="var(--cyan)" stroke-width="1.5" filter="url(#ct)" opacity="0.6"></path>
+    <ellipse cx="178" cy="150" rx="120" ry="138" fill="none" stroke="rgba(90,167,255,0.10)" stroke-dasharray="2 6"></ellipse>
+    <path d="M138,40 C138,20 218,20 218,40 L226,110 L226,252 C226,274 130,274 130,252 L130,110 Z" fill="rgba(90,167,255,0.04)" stroke="var(--cyan)" stroke-width="1.5" filter="url(#ct)" opacity="0.6"></path>
     <path d="M138,40 C138,20 218,20 218,40 L226,110 L226,252 C226,274 130,274 130,252 L130,110 Z" fill="none" stroke="var(--cyan)" stroke-width="1.5"></path>
-    <path d="M146,96 C150,86 206,86 210,96 L214,206 C200,216 156,216 142,206 Z" fill="rgba(79,227,255,0.07)" stroke="rgba(79,227,255,0.6)"></path>
-    <line x1="178" y1="30" x2="178" y2="86" stroke="rgba(79,227,255,0.25)"></line>
+    <path d="M146,96 C150,86 206,86 210,96 L214,206 C200,216 156,216 142,206 Z" fill="rgba(90,167,255,0.07)" stroke="rgba(90,167,255,0.6)"></path>
+    <line x1="178" y1="30" x2="178" y2="86" stroke="rgba(90,167,255,0.25)"></line>
     <rect x="120" y="58" width="9" height="32" rx="3" fill="${tireColor('FL')}"></rect>
     <rect x="227" y="58" width="9" height="32" rx="3" fill="${tireColor('FR')}"></rect>
     <rect x="120" y="206" width="9" height="32" rx="3" fill="${tireColor('RL')}"></rect>
     <rect x="227" y="206" width="9" height="32" rx="3" fill="${tireColor('RR')}"></rect>
-    <line x1="118" y1="74" x2="72" y2="74" stroke="rgba(79,227,255,0.5)"></line>
-    <line x1="238" y1="74" x2="284" y2="74" stroke="rgba(79,227,255,0.5)"></line>
-    <line x1="118" y1="222" x2="72" y2="222" stroke="${flag('RL') ? 'rgba(255,181,71,0.7)' : 'rgba(79,227,255,0.5)'}"></line>
-    <line x1="238" y1="222" x2="284" y2="222" stroke="${flag('RR') ? 'rgba(255,181,71,0.7)' : 'rgba(79,227,255,0.5)'}"></line>
+    <line x1="118" y1="74" x2="72" y2="74" stroke="rgba(90,167,255,0.5)"></line>
+    <line x1="238" y1="74" x2="284" y2="74" stroke="rgba(90,167,255,0.5)"></line>
+    <line x1="118" y1="222" x2="72" y2="222" stroke="${flag('RL') ? 'rgba(255,181,71,0.7)' : 'rgba(90,167,255,0.5)'}"></line>
+    <line x1="238" y1="222" x2="284" y2="222" stroke="${flag('RR') ? 'rgba(255,181,71,0.7)' : 'rgba(90,167,255,0.5)'}"></line>
     ${tt(12, 72, tire('TpmsPressureFl'), 'PSI · FL', 'FL')}
     ${tt(344, 72, tire('TpmsPressureFr'), 'PSI · FR', 'FR', 'end')}
     ${tt(12, 220, tire('TpmsPressureRl'), 'PSI · RL', 'RL')}

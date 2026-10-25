@@ -10,6 +10,7 @@ import { carParkedView, carDrivingView } from './views/car.js';
 import { setupView, loginView } from './views/setup.js';
 import { releaseNotesView, alertsView } from './views/log.js';
 import { signalSheet, sheetSignal } from './views/signal.js';
+import { mountCar3d } from './car3d.js';
 
 const root = document.getElementById('app');
 const dock = document.getElementById('dock');
@@ -76,6 +77,7 @@ function render() {
     const sheetScroll = root.querySelector('.sheet')?.scrollTop || 0;
     const scroll = window.scrollY;
     root.innerHTML = html;
+    mountCar3d(root, { signals: state.signals, leaks: (state.cache.tires?.data?.leaks || []).map((l) => l.tire), paint: prefs.paint, targetPsi: state.meta.tire_target_psi });
     window.scrollTo(0, scroll);
     const sheet = root.querySelector('.sheet');
     if (sheet) {
