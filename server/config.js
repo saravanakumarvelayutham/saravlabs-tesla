@@ -67,6 +67,8 @@ export const config = {
   },
 
   bridgeToken: env.BRIDGE_TOKEN || '',
+  // Lets a script or assistant read the dashboard API without the passcode. GET /api/* only; ignored if short.
+  readToken: (env.READ_TOKEN || '').length >= 32 ? env.READ_TOKEN : '',
 
   // Your home electricity price, used for home charging cost (Tesla does not report it).
   homeRatePerKwh: num(env.HOME_RATE_PER_KWH, 0),

@@ -12,6 +12,7 @@ const cfg = {
   appPasscode: 'letmein',
   sessionSecret: 'test-secret',
   bridgeToken: 'bridge-token',
+  readToken: 'r'.repeat(32),
   publicUrl: 'http://localhost',
   vin: 'TESTVIN',
   tesla: { ...config.tesla, clientId: '', clientSecret: '' },
@@ -49,6 +50,19 @@ test('API needs the passcode', async () => {
   const state = await req('GET', '/api/state');
   assert.equal(state.status, 200);
   assert.equal(state.json.meta.sample_mode, false);
+});
+
+test('the read token only opens GET /api/* routes', async () => {
+  const call = (method, path, token) => fetch(`${base}${path}`, { method, redirect: 'manual', headers: token ? { authorization: `Bearer ${token}` } : {} }).then((r) => r.status);
+  const token = 'r'.repeat(32);
+  assert.equal(await call('GET', '/api/state'), 401);
+  assert.equal(await call('GET', '/api/state', 'x'.repeat(32)), 401);
+  assert.equal(await call('GET', '/api/state', token), 200);
+  assert.equal(await call('GET', '/api/tesla/status', token), 200);
+  assert.equal(await call('POST', '/api/tesla/refresh', token), 401);
+  assert.equal(await call('POST', '/api/push/test', token), 401);
+  assert.equal(await call('GET', '/auth/login', token), 401);
+  assert.equal(await call('POST', '/api/bridge/state', token), 401);
 });
 
 test('the app has no way to send commands to the car', async () => {

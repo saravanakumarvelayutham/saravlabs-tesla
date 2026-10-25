@@ -87,6 +87,8 @@ docker compose exec app node scripts/register-partner.js plaid.example.com
 
 **Notifications.** On iPhone, open the dashboard in Safari, Share → Add to Home Screen, open it from the Home Screen, then Setup → Enable alerts. Safari only allows web push for Home Screen apps (iOS 16.4+).
 
+**Read-only API access (optional).** To let a script or an assistant read the dashboard without the passcode, set `READ_TOKEN` in `.env` to `openssl rand -hex 32` (tokens under 32 characters are ignored) and recreate the app container. Requests with `Authorization: Bearer <READ_TOKEN>` can make GET requests to `/api/*` and nothing else: no POST, no Tesla sign-in, no bridge routes. Anyone with the token can read everything the dashboard shows, including location, so keep it out of chat and source control.
+
 **Garage Pi.** See [pi-bridge/README.md](../pi-bridge/README.md).
 
 ## Costs to know about
