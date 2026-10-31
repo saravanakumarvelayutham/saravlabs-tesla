@@ -5,7 +5,8 @@ import http from 'node:http';
 import path from 'node:path';
 import { SIGNALS, buildTelemetryConfig } from './signals.js';
 import { ingestBle } from './ingest/ble.js';
-import { costBetween, matchSession, parseChargingHistory } from './derive/supercharger.js';
+import { costBetween, matchSession, monthlyTotals, parseChargingHistory } from './derive/supercharger.js';
+import { loadArchive } from './tesla/charging-archive.js';
 import { parseRecentAlerts, parseReleaseNotes } from './derive/vehicle-log.js';
 import { signalHistory } from './history.js';
 import { regenFromCounter, regenTotal } from './derive/regen.js';
@@ -127,6 +128,22 @@ export function createServer(app) {
       tesla_history: hist ? { ts: hist.ts, sample: Boolean(hist.sample), total_records: parsed.total_records, recognized: parsed.recognized, unrecognized: parsed.unrecognized } : null,
     };
   });
+  // Every Supercharger bill Tesla has returned (archived across backfills), totalled by month.
+  route('GET', '/api/charging/history', () => {
+    const hist = app.fleetCache('charging_history');
+    const parsed = hist ? parseChargingHistory(hist.data, { vin: config.vin }) : null;
+    const starts = (parsed?.sessions || []).map((s) => s.start_ts);
+    return {
+      fetched_ts: hist?.ts ?? null,
+      sample: Boolean(hist?.sample),
+      backfill: loadArchive(app.db).backfill,
+      total_records: parsed?.total_records ?? 0,
+      recognized: parsed?.recognized ?? 0,
+      earliest_ts: starts.length ? Math.min(...starts) : null,
+      latest_ts: starts.length ? Math.max(...starts) : null,
+      months: monthlyTotals(parsed),
+    };
+  });
   route('GET', /^\/api\/charging\/(\d+)$/, (req, res, { params }) => app.charging.get(Number(params[0])) || send(res, 404, { error: 'not found' }));
   route('GET', '/api/health/battery', () => app.health.battery());
   route('GET', '/api/health/tires', () => app.health.tires());
@@ -192,6 +209,13 @@ export function createServer(app) {
     const fn = { charging_history: () => app.fleet.chargingHistory(true), release_notes: () => app.fleet.releaseNotes(true), recent_alerts: () => app.fleet.recentAlerts(true) }[what];
     if (!fn) return send(res, 400, { error: 'unknown' });
     try { return await fn(); } catch (err) { return send(res, err.status || 500, { error: err.message, detail: err.body }); }
+  });
+  route('POST', '/api/tesla/backfill', async (req, res, { query }) => {
+    if (!app.fleet) return send(res, 503, { error: 'Fleet API not configured' });
+    if ((query.what || 'charging_history') !== 'charging_history') return send(res, 400, { error: 'unknown' });
+    const since = query.since ? new Date(query.since) : null;
+    if (since && Number.isNaN(since.getTime())) return send(res, 400, { error: 'bad since' });
+    try { return await app.fleet.backfillChargingHistory(since ? { since: since.toISOString() } : {}); } catch (err) { return send(res, err.status || 500, { error: err.message, detail: err.body }); }
   });
   route('GET', '/api/tesla/cache', (req, res, { query }) => app.fleetCache(query.what || 'charging_history'));
 

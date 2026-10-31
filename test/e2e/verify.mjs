@@ -159,11 +159,18 @@ await check('proxy', 'reading the car\'s config back reports synced', async () =
 });
 await check('proxy', 'charging history read goes through the proxy and is cached for the UI', async () => {
   const r = await api('/api/tesla/refresh?what=charging_history', { method: 'POST' });
-  expect(r.status === 200 && r.json?.data?.response, `status ${r.status}`, r.json);
+  expect(r.status === 200 && Array.isArray(r.json?.data?.data), `status ${r.status}`, r.json);
   const c = await api('/api/charging');
   // The record shape is the fake's guess (Tesla doesn't publish it); this checks the plumbing.
   expect(c.json?.tesla_history?.total_records === 1 && !c.json.tesla_history.sample, 'not in /api/charging', c.json?.tesla_history);
   return { refresh_status: r.status, tesla_history: c.json.tesla_history };
+});
+await check('proxy', 'charging history backfill pages through the proxy and keeps the archive', async () => {
+  const r = await api('/api/tesla/backfill?what=charging_history', { method: 'POST' });
+  expect(r.status === 200 && r.json?.fetched === 1 && r.json?.archived === 1 && !r.json.error, `status ${r.status}`, r.json);
+  const h = await api('/api/charging/history');
+  expect(h.json?.recognized === 1 && h.json.months.length === 1, 'not in /api/charging/history', h.json);
+  return { backfill: r.json, months: h.json.months };
 });
 
 // ---------- 6. Push subscription ----------

@@ -2,6 +2,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { config } from '../server/config.js';
 import { createApp } from '../server/index.js';
+import { mergeRecords } from '../server/tesla/charging-archive.js';
 import { createServer } from '../server/http.js';
 import { kvSet } from '../server/db.js';
 import { buildTelemetryConfig, SIGNALS } from '../server/signals.js';
@@ -75,6 +76,21 @@ test('the read token only opens GET /api/* routes', async () => {
   assert.equal(await call('POST', '/api/push/test', token), 401);
   assert.equal(await call('GET', '/auth/login', token), 401);
   assert.equal(await call('POST', '/api/bridge/state', token), 401);
+  assert.equal(await call('POST', '/api/tesla/backfill', token), 401);
+  assert.equal(await call('GET', '/api/charging/history', token), 200);
+});
+
+test('charging history lists archived Supercharger bills by month', async () => {
+  const empty = await req('GET', '/api/charging/history');
+  assert.equal(empty.status, 200);
+  assert.deepEqual(empty.json.months, []);
+  const bill = (id, iso, total) => ({ sessionId: id, chargeStartDateTime: iso, fees: [{ feeType: 'CHARGING', currencyCode: 'USD', uom: 'kwh', usageBase: 30, totalDue: total }] });
+  mergeRecords(app.db, [bill(1, '2023-11-04T15:00:00Z', 12), bill(2, '2026-10-20T15:00:00Z', 20), bill(3, '2026-10-02T15:00:00Z', 5)]);
+  const h = await req('GET', '/api/charging/history');
+  assert.equal(h.json.recognized, 3);
+  assert.equal(h.json.earliest_ts, Date.parse('2023-11-04T15:00:00Z'));
+  assert.deepEqual(h.json.months.map((m) => [m.month, m.sessions, m.cost.USD]), [['2026-10', 2, 25], ['2023-11', 1, 12]]);
+  assert.equal((await req('POST', '/api/tesla/backfill')).status, 503); // no Tesla app configured here
 });
 
 test('the app has no way to send commands to the car', async () => {

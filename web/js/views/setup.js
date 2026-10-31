@@ -56,7 +56,8 @@ export async function setupView(state_) {
     <div class="pn">
       <div class="k">Tesla charging_history (raw)</div>
       <div class="t">Tesla doesn't publish this response's format, so it's shown as received. Supercharger costs are read from it using the field names community clients report; if the Charging tab says records weren't read, this raw view shows what Tesla actually sent.</div>
-      <button class="bigbtn ghost" data-action="refresh-history" type="button">Fetch now</button>
+      <div class="row" style="gap:12px"><button class="bigbtn ghost" data-action="refresh-history" type="button">Fetch newest</button><button class="bigbtn ghost" data-action="backfill-history" type="button">Backfill all history</button></div>
+      <div class="t">${hist?.archive ? `Archive: ${hist.archive.records} records${hist.archive.backfill ? ` · last backfill ${esc(new Date(hist.archive.backfill.ts).toLocaleString())}: ${hist.archive.backfill.fetched} records, ${hist.archive.backfill.pages} pages${hist.archive.backfill.error ? `, stopped: ${esc(hist.archive.backfill.error)}` : ''}` : ' · not backfilled yet'}` : 'Backfill pages through every Supercharger bill Tesla keeps and stores them here permanently.'}</div>
       <pre>${esc(hist ? JSON.stringify(hist, null, 2).slice(0, 4000) : 'Not fetched yet')}</pre>
     </div>` : ''}`;
 }
@@ -92,6 +93,14 @@ Object.assign(actions, {
   paint: (el) => { prefs.paint = el.value; render(); },
   'telemetry-apply': async () => {
     try { await api('/api/tesla/telemetry-config', { method: 'POST' }); toast('Config sent. Check below for synced: true.'); delete state.cache.tcfg; render(); } catch (err) { toast(err.message, true); }
+  },
+  'backfill-history': async () => {
+    try {
+      toast('Reading every page of charging history…');
+      const r = await api('/api/tesla/backfill?what=charging_history', { method: 'POST' });
+      toast(`Backfill: ${r.fetched} records over ${r.pages} pages, ${r.added} new`);
+      delete state.cache.hist; delete state.cache['charging-history']; delete state.cache.charging; render();
+    } catch (err) { toast(err.message, true); }
   },
   'refresh-history': async () => {
     try { await api('/api/tesla/refresh?what=charging_history', { method: 'POST' }); delete state.cache.hist; render(); } catch (err) { toast(err.message, true); }
