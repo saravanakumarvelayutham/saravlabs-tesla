@@ -13,6 +13,7 @@ import { Push } from './push.js';
 import { Bridge } from './bridge.js';
 import { TeslaAuth } from './tesla/auth.js';
 import { Fleet } from './tesla/fleet.js';
+import { loadArchive } from './tesla/charging-archive.js';
 import { startMqtt } from './ingest/mqtt.js';
 import { Sample, sampleFleetCache } from './ingest/sample.js';
 import { seedSampleNotes } from './ingest/sample-notes.js';
@@ -94,8 +95,14 @@ function main() {
   setInterval(() => app.alerts.checkTires(Date.now()), 6 * 3600_000).unref();
   setInterval(() => store.prune(Date.now() - 400 * 86400_000), 24 * 3600_000).unref();
   // Supercharger bills: Tesla's charging_history, read at most every 6 h (Fleet.cached) once linked.
+  // The first time, page back through everything Tesla keeps (once; Setup can run it again).
   const refreshHistory = () => {
-    if (!cfg.sampleMode && app.fleet && app.auth?.linked) app.fleet.chargingHistory().catch((err) => console.warn('[fleet] charging_history:', err.message));
+    if (cfg.sampleMode || !app.fleet || !app.auth?.linked) return;
+    if (!loadArchive(db).backfill) {
+      app.fleet.backfillChargingHistory()
+        .then((r) => console.log(`[fleet] charging_history backfill: ${r.fetched} records over ${r.pages} pages (${r.stop})`))
+        .catch((err) => console.warn('[fleet] charging_history backfill:', err.message));
+    } else app.fleet.chargingHistory().catch((err) => console.warn('[fleet] charging_history:', err.message));
   };
   refreshHistory();
   setInterval(refreshHistory, 3600_000).unref();

@@ -9,7 +9,7 @@
 const num = (v) => (v === null || v === undefined || v === '' ? null : Number.isFinite(Number(v)) ? Number(v) : null);
 
 // Find the array of records inside whatever envelope the response has.
-function records(raw) {
+export function records(raw) {
   const seen = new Set();
   const walk = (v, depth) => {
     if (v == null || depth > 4 || seen.has(v)) return null;
@@ -79,4 +79,20 @@ export function matchSession(parsed, startTs) {
     if (d <= 30 * 60_000 && (!best || d < Math.abs(best.start_ts - startTs))) best = s;
   }
   return best;
+}
+
+// Recognized sessions grouped by calendar month (UTC), newest first: count, kWh and cost per currency.
+export function monthlyTotals(parsed) {
+  const months = new Map();
+  for (const s of parsed?.sessions || []) {
+    const d = new Date(s.start_ts);
+    const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+    const m = months.get(key) || { month: key, sessions: 0, kwh: 0, cost: {} };
+    m.sessions++;
+    m.kwh = Math.round((m.kwh + (s.kwh || 0)) * 10) / 10;
+    const c = s.currency || 'unknown';
+    m.cost[c] = Math.round(((m.cost[c] || 0) + s.cost) * 100) / 100;
+    months.set(key, m);
+  }
+  return [...months.values()].sort((a, b) => (a.month < b.month ? 1 : -1));
 }

@@ -4,6 +4,8 @@
 import fs from 'node:fs';
 import https from 'node:https';
 import { kvGet, kvSet } from '../db.js';
+import { chargingHistoryPath, mergeRecords, runBackfill } from './charging-archive.js';
+import { records } from '../derive/supercharger.js';
 
 export class Fleet {
   constructor(db, tesla, auth, vin) {
@@ -80,8 +82,18 @@ export class Fleet {
     return entry;
   }
 
-  chargingHistory(force = false) {
-    return this.cached('charging_history', force ? 0 : 6 * 3600_000, () => this.request('GET', `/api/1/dx/charging/history`));
+  // Newest page of charging_history, merged into the permanent archive (charging-archive.js)
+  // so older records stay once a backfill has fetched them.
+  async chargingHistory(force = false) {
+    const hit = kvGet(this.db, 'cache:charging_history');
+    if (!force && hit && Date.now() - hit.ts < 6 * 3600_000) return hit;
+    const raw = await this.request('GET', chargingHistoryPath());
+    return mergeRecords(this.db, records(raw)).entry;
+  }
+
+  // Every page Tesla will return, since `since` (ISO time; defaults to 2012).
+  backfillChargingHistory(opts = {}) {
+    return runBackfill(this.db, (m, p) => this.request(m, p), { vin: this.vin, ...opts });
   }
 
   releaseNotes(force = false) {

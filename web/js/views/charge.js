@@ -4,6 +4,7 @@ import { arc, chips, day, esc, lineChart, money, num, sampleBadge } from '../ui.
 
 export async function chargeView(state) {
   const data = await load('charging', '/api/charging', 30_000);
+  const past = await load('charging-history', '/api/charging/history', 300_000).catch(() => null);
   const cur = data.current;
   const dc = cur ? cur.dc : /Supercharger|CHAdeMO|Combo|GB/.test(sig('FastChargerType') || '');
   const kw = cur ? sig(dc ? 'DCChargingPower' : 'ACChargingPower') : null;
@@ -74,6 +75,8 @@ export async function chargeView(state) {
       ${chips(['ACChargingEnergyIn', 'DCChargingEnergyIn', 'LocatedAtHome', 'api:charging_history'], state.signals)}
     </div>
 
+    ${historyPanel(past)}
+
     <div class="pn" style="gap:0">
       <div class="k" style="padding-bottom:6px">Session log</div>
       ${data.sessions.length ? data.sessions.slice(0, 12).map((s) => `<div class="list-row">
@@ -81,5 +84,27 @@ export async function chargeView(state) {
         <div class="t mono">${day(s.start_ts)} · ${num(s.start_soc)}→${num(s.end_soc)}% · ${num(s.energy_battery_kwh, 1)} kWh</div></div>
         <span class="mono">${s.cost != null ? money(s.cost, cur$) : s.tesla_cost != null ? money(s.tesla_cost, s.tesla_currency || cur$) : s.dc ? 'DC' : '—'}</span></div>`).join('') : '<div class="empty">No charging sessions yet</div>'}
       <div class="t" style="padding-top:8px">Sessions come from DetailedChargeState. Home cost uses the charger-side kWh (ACChargingEnergyIn) times your rate. Supercharger cost is Tesla's billed total for the history record starting within 30 min of the session.</div>
+    </div>`;
+}
+
+const monthName = (key) => new Date(`${key}-01T12:00:00Z`).toLocaleString([], { month: 'short', year: 'numeric', timeZone: 'UTC' });
+const costs = (cost) => Object.entries(cost).map(([c, v]) => (c === 'unknown' ? `${num(v, 2)}` : money(v, c))).join(' + ');
+
+// Supercharger bills from Tesla's charging history, as far back as Tesla returned them.
+function historyPanel(h) {
+  if (!h || !h.months.length) return '';
+  const bf = h.backfill;
+  const ymd = (ts) => new Date(ts).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+  const span = h.earliest_ts ? `${ymd(h.earliest_ts)} to ${ymd(h.latest_ts)}` : '';
+  const note = bf?.error ? `Last backfill stopped early: ${bf.error}.`
+    : bf ? `Backfill read ${bf.fetched} records over ${bf.pages} page${bf.pages === 1 ? '' : 's'}${bf.total_results != null ? ` (Tesla reported ${bf.total_results})` : ''}.`
+    : 'Only the newest page has been read so far; run the backfill on Setup for older bills.';
+  return `<div class="pn" style="gap:0">
+      <div class="row" style="padding-bottom:6px"><span class="k">Supercharger history</span>${h.sample ? '<span class="k">Sample</span>' : ''}</div>
+      <div class="t" style="padding-bottom:6px">${h.recognized} billed sessions${span ? `, ${esc(span)}` : ''}. ${esc(note)}</div>
+      ${h.months.map((m) => `<div class="list-row"><div><div>${esc(monthName(m.month))}</div>
+        <div class="t mono">${m.sessions} session${m.sessions === 1 ? '' : 's'} · ${num(m.kwh, 0)} kWh</div></div>
+        <span class="mono">${esc(costs(m.cost))}</span></div>`).join('')}
+      <div class="t" style="padding-top:8px">From Tesla's charging_history, which covers Supercharger sessions only. Home charging and drives before telemetry started on this dashboard aren't in any Tesla API.</div>
     </div>`;
 }
